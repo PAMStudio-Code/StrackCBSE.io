@@ -32,6 +32,7 @@ import { QuizAnalytics } from './components/QuizAnalytics';
 import { FormulaSheet } from './components/FormulaSheet';
 import { SamplePaperTracker } from './components/SamplePaperTracker';
 import { TargetExamModal } from './components/TargetExamModal';
+import { AuthModal } from './components/AuthModal';
 
 // Helper to generate a completely fresh 0% progress syllabus
 function getCleanClearedChapters(chaps: Chapter[]): Chapter[] {
@@ -119,9 +120,10 @@ export default function App() {
     localStorage.setItem('cbse_student_profile', JSON.stringify(profile));
   }, [profile]);
 
-  // Target exam customizer modal & XP Level modal
+  // Target exam customizer modal & XP Level modal & Auth modal
   const [isTargetModalOpen, setIsTargetModalOpen] = useState<boolean>(false);
   const [isXpModalOpen, setIsXpModalOpen] = useState<boolean>(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
   // 2. Virtual Plants & Garden Rewards
   const [virtualPlants, setVirtualPlants] = useState<VirtualPlant[]>(() => {
@@ -318,6 +320,7 @@ export default function App() {
           setSearchQuery={setSearchQuery}
           onClearAllProgress={handleClearAllProgress}
           onOpenTargetModal={() => setIsTargetModalOpen(true)}
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
           theme={theme}
           toggleTheme={toggleTheme}
           isXpModalOpen={isXpModalOpen}
@@ -436,6 +439,12 @@ export default function App() {
         onClose={() => setIsTargetModalOpen(false)}
         profile={profile}
         setProfile={setProfile}
+      />
+
+      {/* In-Place Firebase Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
 
     </div>

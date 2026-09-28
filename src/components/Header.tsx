@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Award, BookOpen, Clock, Calendar, CheckCircle2, Flame, Search, Target, ChevronRight, RotateCcw, Layers, Sparkles, Trophy, Edit3, Sun, Moon, Building2, Globe } from 'lucide-react';
+import { Award, BookOpen, Clock, Calendar, CheckCircle2, Flame, Search, Target, ChevronRight, RotateCcw, Layers, Sparkles, Trophy, Edit3, Sun, Moon, Building2, Globe, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { auth } from '../lib/firebase';
 import { StudentProfile, Chapter, StudySession, QuizAttempt, VirtualPlant } from '../types';
 import { calculateTotalXp, getLevelInfo } from '../utils/xpSystem';
 
@@ -14,6 +16,7 @@ interface HeaderProps {
   setSearchQuery: (q: string) => void;
   onClearAllProgress?: () => void;
   onOpenTargetModal?: () => void;
+  onOpenAuthModal?: () => void;
   theme?: 'light' | 'dark';
   toggleTheme?: () => void;
   isXpModalOpen?: boolean;
@@ -31,11 +34,13 @@ export const Header: React.FC<HeaderProps> = ({
   setSearchQuery,
   onClearAllProgress,
   onOpenTargetModal,
+  onOpenAuthModal,
   theme = 'light',
   toggleTheme,
   isXpModalOpen,
   setIsXpModalOpen
 }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [daysLeft, setDaysLeft] = useState<number>(0);
   const [halfYearlyDays, setHalfYearlyDays] = useState<number>(0);
   const [preBoard1Days, setPreBoard1Days] = useState<number>(0);
@@ -52,6 +57,14 @@ export const Header: React.FC<HeaderProps> = ({
   // Calculate XP & Level
   const totalXp = calculateTotalXp(chapters, studySessions, quizAttempts, virtualPlants);
   const levelInfo = getLevelInfo(totalXp);
+
+  // Subscribe to Firebase Auth state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const calculateDays = () => {
@@ -295,6 +308,47 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden sm:inline">Clear Progress</span>
               </button>
             )}
+
+            {/* Firebase Auth In-Place Sign In / Account Status */}
+            {currentUser ? (
+              <div className="bg-stone-100 dark:bg-stone-900 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700/80 rounded-xl px-2.5 py-1.5 flex items-center gap-2 shadow-2xs">
+                {currentUser.photoURL ? (
+                  <img
+                    src={currentUser.photoURL}
+                    alt={currentUser.displayName || 'User'}
+                    className="w-5 h-5 rounded-full object-cover border border-emerald-500/60"
+                  />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[10px] font-bold">
+                    {(currentUser.displayName || currentUser.email || 'U')[0].toUpperCase()}
+                  </div>
+                )}
+                <span className="text-xs font-bold max-w-[100px] truncate text-stone-700 dark:text-stone-200">
+                  {currentUser.displayName || currentUser.email?.split('@')[0]}
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOut(auth);
+                  }}
+                  className="p-1 hover:bg-stone-200 dark:hover:bg-stone-800 rounded-lg text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                  title="Sign out of Firebase account"
+                  aria-label="Sign out"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : onOpenAuthModal ? (
+              <button
+                type="button"
+                onClick={onOpenAuthModal}
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl px-3 py-2 flex items-center gap-1.5 text-xs transition-all shadow-xs cursor-pointer group"
+                title="Sign In or Sign Up without leaving page"
+              >
+                <LogIn className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                <span>Sign In</span>
+              </button>
+            ) : null}
 
             {/* Student Profile Settings Badge */}
             <button
