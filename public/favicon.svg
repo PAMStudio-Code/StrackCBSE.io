@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <!-- Pure Black Circle Base -->
+  <circle cx="100" cy="100" r="98" fill="#000000" />
+
+  <!-- Sketched White Letter 'S' Contour & Texture -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Outer Outline 1 (Main Hand-drawn Frame) -->
+    <path stroke-width="4.5" d="
+      M 130 52
+      C 126 44, 115 36, 98 36
+      C 76 36, 60 48, 60 66
+      C 60 84, 76 92, 102 99
+      C 128 106, 142 118, 142 138
+      C 142 158, 122 170, 94 170
+      C 72 170, 56 160, 50 148
+    " />
+
+    <!-- Outer Outline 2 (Parallel Sketch Line creating hollow stroke effect) -->
+    <path stroke-width="3.5" d="
+      M 124 58
+      C 120 50, 112 44, 98 44
+      C 82 44, 70 53, 70 66
+      C 70 78, 83 85, 108 92
+      C 134 99, 132 116, 132 134
+      C 132 150, 116 161, 94 161
+      C 78 161, 66 154, 58 143
+    " />
+
+    <!-- Top and Bottom Caps closing the S ribbon ends -->
+    <path stroke-width="4" d="M 130 52 L 124 58" />
+    <path stroke-width="4" d="M 50 148 L 58 143" />
+
+    <!-- Inner Sketch Hatching / Cross-Dashes for authentic sketchy texture -->
+    <g stroke-width="2.5" opacity="0.9">
+      <line x1="65" y1="60" x2="73" y2="57" />
+      <line x1="78" y1="48" x2="84" y2="44" />
+      <line x1="94" y1="42" x2="98" y2="38" />
+      <line x1="110" y1="44" x2="116" y2="48" />
+      <line x1="63" y1="72" x2="71" y2="74" />
+      <line x1="72" y1="83" x2="80" y2="87" />
+      <line x1="88" y1="92" x2="96" y2="96" />
+      <line x1="106" y1="98" x2="114" y2="103" />
+      <line x1="124" y1="112" x2="132" y2="118" />
+      <line x1="130" y1="128" x2="138" y2="132" />
+      <line x1="124" y1="145" x2="130" y2="152" />
+      <line x1="108" y1="158" x2="114" y2="164" />
+      <line x1="90" y1="162" x2="92" y2="168" />
+      <line x1="72" y1="156" x2="78" y2="160" />
+    </g>
+  </g>
+</svg>

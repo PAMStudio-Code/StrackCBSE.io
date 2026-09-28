@@ -1,0 +1,6 @@
+{
+  "name": "StrackCBSE(Class10).io",
+  "description": "Comprehensive study scheduler, syllabus progress tracker, Pomodoro timer, CBSE pattern quizzes, and weak area analyzer for Class 10 students.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

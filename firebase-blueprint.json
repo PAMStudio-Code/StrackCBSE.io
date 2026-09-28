@@ -1,0 +1,39 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Accounts",
+      "description": "User profile and target settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "targetBoardYear": { "type": "string" },
+        "targetExamName": { "type": "string" },
+        "boardExamDate": { "type": "string" },
+        "dailyStudyGoalMinutes": { "type": "number" },
+        "avatarEmoji": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "name"]
+    },
+    "user_data": {
+      "title": "User Sync Data",
+      "description": "User specific data state containing chapters, study sessions, quizzes, and garden plants",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "profile": { "type": "object" },
+        "chapters": { "type": "array" },
+        "virtualPlants": { "type": "array" },
+        "quizQuestions": { "type": "array" },
+        "quizAttempts": { "type": "array" },
+        "toDos": { "type": "array" },
+        "studySessions": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["email"]
+    }
+  }
+}
