@@ -16,14 +16,13 @@
         "avatarEmoji": { "type": "string" },
         "createdAt": { "type": "string" }
       },
-      "required": ["uid", "email", "name"]
+      "required": ["uid", "email"]
     },
-    "user_data": {
-      "title": "User Sync Data",
-      "description": "User specific data state containing chapters, study sessions, quizzes, and garden plants",
+    "trackerData": {
+      "title": "Student Tracker Data",
+      "description": "Student study tasks, syllabus chapters, study sessions, quizzes, and virtual plants",
       "type": "object",
       "properties": {
-        "email": { "type": "string" },
         "profile": { "type": "object" },
         "chapters": { "type": "array" },
         "virtualPlants": { "type": "array" },
@@ -32,8 +31,17 @@
         "toDos": { "type": "array" },
         "studySessions": { "type": "array" },
         "updatedAt": { "type": "string" }
-      },
-      "required": ["email"]
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profile document"
+    },
+    "/users/{userId}/trackerData/{docId}": {
+      "schema": "trackerData",
+      "description": "Student tracker tasks and progress document"
     }
   }
 }

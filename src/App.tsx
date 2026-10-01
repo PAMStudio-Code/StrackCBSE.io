@@ -3,7 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { auth } from './lib/firebase';
+import { loadStudentTrackerData, saveStudentTrackerData } from './lib/syncService';
 import { 
   Subject, 
   Chapter, 
@@ -125,6 +128,11 @@ export default function App() {
   const [isXpModalOpen, setIsXpModalOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
+  // Authentication & Cloud Sync State
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const isInitialSyncDone = useRef(false);
+
   // 2. Virtual Plants & Garden Rewards
   const [virtualPlants, setVirtualPlants] = useState<VirtualPlant[]>(() => {
     const saved = localStorage.getItem('cbse_virtual_plants');
@@ -214,6 +222,94 @@ export default function App() {
     localStorage.setItem('cbse_study_sessions', JSON.stringify(studySessions));
   }, [studySessions]);
 
+  // Listen for user auth state and seamlessly sync tracker data with Firestore under users/${user.uid}/trackerData
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+      if (user) {
+        setSyncStatus('syncing');
+        try {
+          const remoteData = await loadStudentTrackerData(user.uid);
+          if (remoteData) {
+            // Apply remote data if present
+            if (remoteData.chapters && Array.isArray(remoteData.chapters) && remoteData.chapters.length > 0) {
+              setChapters(remoteData.chapters);
+              localStorage.setItem('cbse_chapters', JSON.stringify(remoteData.chapters));
+            }
+            if (remoteData.toDos && Array.isArray(remoteData.toDos)) {
+              setToDos(remoteData.toDos);
+              localStorage.setItem('cbse_todos', JSON.stringify(remoteData.toDos));
+            }
+            if (remoteData.studySessions && Array.isArray(remoteData.studySessions)) {
+              setStudySessions(remoteData.studySessions);
+              localStorage.setItem('cbse_study_sessions', JSON.stringify(remoteData.studySessions));
+            }
+            if (remoteData.quizAttempts && Array.isArray(remoteData.quizAttempts)) {
+              setQuizAttempts(remoteData.quizAttempts);
+              localStorage.setItem('cbse_quiz_attempts', JSON.stringify(remoteData.quizAttempts));
+            }
+            if (remoteData.virtualPlants && Array.isArray(remoteData.virtualPlants)) {
+              setVirtualPlants(remoteData.virtualPlants);
+              localStorage.setItem('cbse_virtual_plants', JSON.stringify(remoteData.virtualPlants));
+            }
+            if (remoteData.quizQuestions && Array.isArray(remoteData.quizQuestions)) {
+              setQuizQuestions(remoteData.quizQuestions);
+              localStorage.setItem('cbse_quiz_questions', JSON.stringify(remoteData.quizQuestions));
+            }
+            if (remoteData.profile) {
+              setProfile(prev => ({ ...prev, ...remoteData.profile }));
+              localStorage.setItem('cbse_student_profile', JSON.stringify({ ...profile, ...remoteData.profile }));
+            }
+            setSyncStatus('synced');
+          } else {
+            // First time login: seed Firestore with current local tasks and progress
+            await saveStudentTrackerData(user.uid, {
+              profile,
+              chapters,
+              toDos,
+              studySessions,
+              quizAttempts,
+              virtualPlants,
+              quizQuestions
+            });
+            setSyncStatus('synced');
+          }
+        } catch (err) {
+          console.error('Failed to sync tracker data on login:', err);
+          setSyncStatus('error');
+        } finally {
+          isInitialSyncDone.current = true;
+        }
+      } else {
+        setSyncStatus('idle');
+        isInitialSyncDone.current = true;
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Seamlessly debounced sync to Firestore under users/${user.uid}/trackerData whenever tasks or progress change
+  useEffect(() => {
+    if (!currentUser || !isInitialSyncDone.current) return;
+
+    const timer = setTimeout(async () => {
+      setSyncStatus('syncing');
+      const success = await saveStudentTrackerData(currentUser.uid, {
+        profile,
+        chapters,
+        toDos,
+        studySessions,
+        quizAttempts,
+        virtualPlants,
+        quizQuestions
+      });
+      setSyncStatus(success ? 'synced' : 'error');
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [currentUser, profile, chapters, toDos, studySessions, quizAttempts, virtualPlants, quizQuestions]);
+
   // Function to wipe out all progress across the entire app when requested by user
   const handleClearAllProgress = () => {
     const cleanChaps = getCleanClearedChapters(INITIAL_CHAPTERS);
@@ -237,6 +333,19 @@ export default function App() {
     localStorage.setItem('cbse_todos', JSON.stringify([]));
     localStorage.setItem('cbse_quiz_attempts', JSON.stringify([]));
     localStorage.setItem('cbse_study_sessions', JSON.stringify([]));
+
+    // Also sync cleared state to Firestore if user is authenticated
+    if (currentUser) {
+      saveStudentTrackerData(currentUser.uid, {
+        profile,
+        chapters: cleanChaps,
+        toDos: [],
+        studySessions: [],
+        quizAttempts: [],
+        virtualPlants: [],
+        quizQuestions: INITIAL_QUIZ_QUESTIONS
+      }).catch(console.error);
+    }
   };
 
   // 6. Navigation & Search State
@@ -321,6 +430,7 @@ export default function App() {
           onClearAllProgress={handleClearAllProgress}
           onOpenTargetModal={() => setIsTargetModalOpen(true)}
           onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          syncStatus={syncStatus}
           theme={theme}
           toggleTheme={toggleTheme}
           isXpModalOpen={isXpModalOpen}

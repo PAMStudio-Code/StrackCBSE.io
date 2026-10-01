@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Award, BookOpen, Clock, Calendar, CheckCircle2, Flame, Search, Target, ChevronRight, RotateCcw, Layers, Sparkles, Trophy, Edit3, Sun, Moon, Building2, Globe, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { Award, BookOpen, Clock, Calendar, CheckCircle2, Flame, Search, Target, ChevronRight, RotateCcw, Layers, Sparkles, Trophy, Edit3, Sun, Moon, Building2, Globe, LogIn, LogOut, User as UserIcon, Cloud, CloudUpload, CloudOff } from 'lucide-react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { StudentProfile, Chapter, StudySession, QuizAttempt, VirtualPlant } from '../types';
@@ -17,6 +17,7 @@ interface HeaderProps {
   onClearAllProgress?: () => void;
   onOpenTargetModal?: () => void;
   onOpenAuthModal?: () => void;
+  syncStatus?: 'idle' | 'syncing' | 'synced' | 'error';
   theme?: 'light' | 'dark';
   toggleTheme?: () => void;
   isXpModalOpen?: boolean;
@@ -35,6 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
   onClearAllProgress,
   onOpenTargetModal,
   onOpenAuthModal,
+  syncStatus = 'idle',
   theme = 'light',
   toggleTheme,
   isXpModalOpen,
@@ -323,9 +325,31 @@ export const Header: React.FC<HeaderProps> = ({
                     {(currentUser.displayName || currentUser.email || 'U')[0].toUpperCase()}
                   </div>
                 )}
-                <span className="text-xs font-bold max-w-[100px] truncate text-stone-700 dark:text-stone-200">
-                  {currentUser.displayName || currentUser.email?.split('@')[0]}
-                </span>
+                <div className="text-left hidden sm:block max-w-[120px]">
+                  <div className="text-xs font-bold truncate text-stone-700 dark:text-stone-200">
+                    {currentUser.displayName || currentUser.email?.split('@')[0]}
+                  </div>
+                  {/* Cloud Sync Status Indicator */}
+                  <div className="text-[10px] flex items-center gap-1 font-medium">
+                    {syncStatus === 'syncing' ? (
+                      <span className="text-emerald-500 flex items-center gap-0.5">
+                        <CloudUpload className="w-2.5 h-2.5 animate-pulse" /> Syncing...
+                      </span>
+                    ) : syncStatus === 'synced' ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                        <Cloud className="w-2.5 h-2.5" /> Synced to Cloud
+                      </span>
+                    ) : syncStatus === 'error' ? (
+                      <span className="text-amber-500 flex items-center gap-0.5">
+                        <CloudOff className="w-2.5 h-2.5" /> Sync error
+                      </span>
+                    ) : (
+                      <span className="text-stone-400 flex items-center gap-0.5">
+                        <Cloud className="w-2.5 h-2.5" /> Online
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <button
                   type="button"
                   onClick={async () => {
