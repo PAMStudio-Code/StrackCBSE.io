@@ -193,7 +193,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <ShieldCheck className="w-6 h-6" />
           </div>
           <h2 id="auth-modal-title" className="text-xl sm:text-2xl font-black tracking-tight text-white">
-            {mode === 'signin' ? 'Log In to Strack' : 'Create Free Account'}
+            {mode === 'signin' ? 'Log In to Stracked' : 'Create Free Account'}
           </h2>
           <p className="text-xs sm:text-sm text-stone-400 max-w-xs mx-auto">
             {mode === 'signin' 

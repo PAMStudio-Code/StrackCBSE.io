@@ -1,0 +1,17 @@
+{
+  "name": "Stracked — CBSE Study & Syllabus Tracker",
+  "short_name": "Stracked",
+  "description": "Comprehensive CBSE Class 10 study scheduler, syllabus progress tracker, Pomodoro timer, chapter quizzes, and weak area analyzer.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020204",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

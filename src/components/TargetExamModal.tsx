@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StudentProfile } from '../types';
 import { Calendar, Target, Clock, X, Check, Award, Sparkles } from 'lucide-react';
+import { STORAGE_KEYS } from '../utils/storage';
 
 interface TargetExamModalProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export const TargetExamModal: React.FC<TargetExamModalProps> = ({
       dailyStudyGoalMinutes: Number(dailyGoalMins) || 180
     };
     setProfile(updated);
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
     localStorage.setItem('cbse_student_profile', JSON.stringify(updated));
     onClose();
   };

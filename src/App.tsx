@@ -27,7 +27,7 @@ import {
 import { INITIAL_QUIZ_QUESTIONS } from './data/cbseQuizData';
 import { INITIAL_FORMULA_CARDS } from './data/cbseFormulasData';
 import { Header } from './components/Header';
-import { Navigation } from './components/Navigation';
+import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { SyllabusTracker } from './components/SyllabusTracker';
 import { StudyTimer } from './components/StudyTimer';
@@ -36,6 +36,10 @@ import { FormulaSheet } from './components/FormulaSheet';
 import { SamplePaperTracker } from './components/SamplePaperTracker';
 import { TargetExamModal } from './components/TargetExamModal';
 import { AuthModal } from './components/AuthModal';
+import { STORAGE_KEYS, getMigratedStorageItem, migrateLocalStorage } from './utils/storage';
+
+// Automatically perform migration from legacy keys ('strack_*', 'cbse_*') to 'stracked_*'
+migrateLocalStorage();
 
 // Helper to generate a completely fresh 0% progress syllabus
 function getCleanClearedChapters(chaps: Chapter[]): Chapter[] {
@@ -55,10 +59,11 @@ function getCleanClearedChapters(chaps: Chapter[]): Chapter[] {
 export default function App() {
   // Theme State
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('cbse_theme') as 'light' | 'dark') || 'light';
+    return (getMigratedStorageItem(STORAGE_KEYS.THEME, ['strack_theme', 'cbse_theme']) as 'light' | 'dark') || 'light';
   });
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.THEME, theme);
     localStorage.setItem('cbse_theme', theme);
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
@@ -71,55 +76,23 @@ export default function App() {
     setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
   };
 
-  // Scroll hide / reveal state for Navigation & Header
-  const [isNavVisible, setIsNavVisible] = useState(true);
-
-  useEffect(() => {
-    let lastScrollY = window.scrollY;
-    let scrollUpDistance = 0;
-    let scrollDownDistance = 0;
-
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const delta = currentScrollY - lastScrollY;
-
-      // Always keep header visible when near top of page (within 120px)
-      if (currentScrollY <= 120) {
-        setIsNavVisible(true);
-        scrollUpDistance = 0;
-        scrollDownDistance = 0;
-      } else if (delta > 0) {
-        // Scrolling down
-        scrollUpDistance = 0;
-        scrollDownDistance += delta;
-        // Hide when scrolling down past 50px threshold
-        if (scrollDownDistance > 50) {
-          setIsNavVisible(false);
-        }
-      } else if (delta < 0) {
-        // Scrolling up
-        scrollDownDistance = 0;
-        scrollUpDistance += Math.abs(delta);
-        // Require strong, deliberate scroll up by at least 200px before revealing menu bar
-        if (scrollUpDistance > 200) {
-          setIsNavVisible(true);
-        }
-      }
-
-      lastScrollY = currentScrollY;
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Sidebar Collapsed & Mobile Drawer State
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 1200;
+    }
+    return false;
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   // 1. Profile State
   const [profile, setProfile] = useState<StudentProfile>(() => {
-    const saved = localStorage.getItem('cbse_student_profile') || localStorage.getItem('cbse_profile');
+    const saved = getMigratedStorageItem(STORAGE_KEYS.SETTINGS, ['strack_settings', 'cbse_student_profile', 'cbse_profile']);
     return saved ? JSON.parse(saved) : DEFAULT_STUDENT_PROFILE;
   });
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(profile));
     localStorage.setItem('cbse_student_profile', JSON.stringify(profile));
   }, [profile]);
 
@@ -135,7 +108,7 @@ export default function App() {
 
   // 2. Virtual Plants & Garden Rewards
   const [virtualPlants, setVirtualPlants] = useState<VirtualPlant[]>(() => {
-    const saved = localStorage.getItem('cbse_virtual_plants');
+    const saved = getMigratedStorageItem(STORAGE_KEYS.VIRTUAL_PLANTS, ['strack_virtual_plants', 'cbse_virtual_plants']);
     if (saved) return JSON.parse(saved);
     // Starter plant badge
     return [
@@ -152,12 +125,13 @@ export default function App() {
   });
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.VIRTUAL_PLANTS, JSON.stringify(virtualPlants));
     localStorage.setItem('cbse_virtual_plants', JSON.stringify(virtualPlants));
   }, [virtualPlants]);
 
   // 3. Chapters State (Clean 0% completion state when cleared, with missing chapters auto-merged)
   const [chapters, setChapters] = useState<Chapter[]>(() => {
-    const saved = localStorage.getItem('cbse_chapters');
+    const saved = getMigratedStorageItem(STORAGE_KEYS.SYLLABUS, ['strack_syllabus', 'cbse_chapters']);
     if (saved) {
       try {
         const parsed: Chapter[] = JSON.parse(saved);
@@ -179,46 +153,51 @@ export default function App() {
 
   // Save chapters changes to localStorage
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.SYLLABUS, JSON.stringify(chapters));
     localStorage.setItem('cbse_chapters', JSON.stringify(chapters));
   }, [chapters]);
 
   // 4. Quiz Questions & Attempts
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>(() => {
-    const saved = localStorage.getItem('cbse_quiz_questions');
+    const saved = getMigratedStorageItem(STORAGE_KEYS.QUIZ_QUESTIONS, ['strack_quiz_questions', 'cbse_quiz_questions']);
     return saved ? JSON.parse(saved) : INITIAL_QUIZ_QUESTIONS;
   });
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.QUIZ_QUESTIONS, JSON.stringify(quizQuestions));
     localStorage.setItem('cbse_quiz_questions', JSON.stringify(quizQuestions));
   }, [quizQuestions]);
 
   const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>(() => {
-    const saved = localStorage.getItem('cbse_quiz_attempts');
+    const saved = getMigratedStorageItem(STORAGE_KEYS.QUIZ_ATTEMPTS, ['strack_quiz_attempts', 'cbse_quiz_attempts']);
     return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.QUIZ_ATTEMPTS, JSON.stringify(quizAttempts));
     localStorage.setItem('cbse_quiz_attempts', JSON.stringify(quizAttempts));
   }, [quizAttempts]);
 
   // 5. To-Do Items State
   const [toDos, setToDos] = useState<ToDoItem[]>(() => {
-    const saved = localStorage.getItem('cbse_todos');
+    const saved = getMigratedStorageItem(STORAGE_KEYS.TASKS, ['strack_tasks', 'cbse_todos']);
     if (saved) return JSON.parse(saved);
     return [];
   });
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(toDos));
     localStorage.setItem('cbse_todos', JSON.stringify(toDos));
   }, [toDos]);
 
   // 6. Study Sessions Log
   const [studySessions, setStudySessions] = useState<StudySession[]>(() => {
-    const saved = localStorage.getItem('cbse_study_sessions');
+    const saved = getMigratedStorageItem(STORAGE_KEYS.STUDY_SESSIONS, ['strack_study_sessions', 'cbse_study_sessions']);
     return saved ? JSON.parse(saved) : [];
   });
 
   useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.STUDY_SESSIONS, JSON.stringify(studySessions));
     localStorage.setItem('cbse_study_sessions', JSON.stringify(studySessions));
   }, [studySessions]);
 
@@ -234,30 +213,37 @@ export default function App() {
             // Apply remote data if present
             if (remoteData.chapters && Array.isArray(remoteData.chapters) && remoteData.chapters.length > 0) {
               setChapters(remoteData.chapters);
+              localStorage.setItem(STORAGE_KEYS.SYLLABUS, JSON.stringify(remoteData.chapters));
               localStorage.setItem('cbse_chapters', JSON.stringify(remoteData.chapters));
             }
             if (remoteData.toDos && Array.isArray(remoteData.toDos)) {
               setToDos(remoteData.toDos);
+              localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(remoteData.toDos));
               localStorage.setItem('cbse_todos', JSON.stringify(remoteData.toDos));
             }
             if (remoteData.studySessions && Array.isArray(remoteData.studySessions)) {
               setStudySessions(remoteData.studySessions);
+              localStorage.setItem(STORAGE_KEYS.STUDY_SESSIONS, JSON.stringify(remoteData.studySessions));
               localStorage.setItem('cbse_study_sessions', JSON.stringify(remoteData.studySessions));
             }
             if (remoteData.quizAttempts && Array.isArray(remoteData.quizAttempts)) {
               setQuizAttempts(remoteData.quizAttempts);
+              localStorage.setItem(STORAGE_KEYS.QUIZ_ATTEMPTS, JSON.stringify(remoteData.quizAttempts));
               localStorage.setItem('cbse_quiz_attempts', JSON.stringify(remoteData.quizAttempts));
             }
             if (remoteData.virtualPlants && Array.isArray(remoteData.virtualPlants)) {
               setVirtualPlants(remoteData.virtualPlants);
+              localStorage.setItem(STORAGE_KEYS.VIRTUAL_PLANTS, JSON.stringify(remoteData.virtualPlants));
               localStorage.setItem('cbse_virtual_plants', JSON.stringify(remoteData.virtualPlants));
             }
             if (remoteData.quizQuestions && Array.isArray(remoteData.quizQuestions)) {
               setQuizQuestions(remoteData.quizQuestions);
+              localStorage.setItem(STORAGE_KEYS.QUIZ_QUESTIONS, JSON.stringify(remoteData.quizQuestions));
               localStorage.setItem('cbse_quiz_questions', JSON.stringify(remoteData.quizQuestions));
             }
             if (remoteData.profile) {
               setProfile(prev => ({ ...prev, ...remoteData.profile }));
+              localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify({ ...profile, ...remoteData.profile }));
               localStorage.setItem('cbse_student_profile', JSON.stringify({ ...profile, ...remoteData.profile }));
             }
             setSyncStatus('synced');
@@ -321,17 +307,27 @@ export default function App() {
     setQuizQuestions(INITIAL_QUIZ_QUESTIONS);
 
     // Clear local storage
+    localStorage.removeItem(STORAGE_KEYS.SYLLABUS);
     localStorage.removeItem('cbse_chapters');
+    localStorage.removeItem(STORAGE_KEYS.TASKS);
     localStorage.removeItem('cbse_todos');
+    localStorage.removeItem(STORAGE_KEYS.QUIZ_ATTEMPTS);
     localStorage.removeItem('cbse_quiz_attempts');
+    localStorage.removeItem(STORAGE_KEYS.STUDY_SESSIONS);
     localStorage.removeItem('cbse_study_sessions');
+    localStorage.removeItem(STORAGE_KEYS.QUIZ_QUESTIONS);
     localStorage.removeItem('cbse_quiz_questions');
+    localStorage.removeItem(STORAGE_KEYS.SAMPLE_PAPERS);
     localStorage.removeItem('cbse_sample_papers');
 
     // Save cleaned state
+    localStorage.setItem(STORAGE_KEYS.SYLLABUS, JSON.stringify(cleanChaps));
     localStorage.setItem('cbse_chapters', JSON.stringify(cleanChaps));
+    localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify([]));
     localStorage.setItem('cbse_todos', JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.QUIZ_ATTEMPTS, JSON.stringify([]));
     localStorage.setItem('cbse_quiz_attempts', JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.STUDY_SESSIONS, JSON.stringify([]));
     localStorage.setItem('cbse_study_sessions', JSON.stringify([]));
 
     // Also sync cleared state to Firestore if user is authenticated
@@ -409,139 +405,146 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen font-sans antialiased selection:bg-emerald-500 selection:text-white pb-12 transition-colors duration-200 ${
+    <div className={`min-h-screen flex font-sans antialiased selection:bg-emerald-500 selection:text-white transition-colors duration-200 ${
       theme === 'dark' ? 'dark bg-[#020204] text-white' : 'bg-stone-50/80 text-stone-900'
     }`}>
       
-      {/* Sticky Header & Menu Bar (slides up on scroll down, reveals on scroll up) */}
-      <div className={`sticky top-0 z-40 transition-transform duration-300 ease-in-out ${
-        isNavVisible ? 'translate-y-0' : '-translate-y-full'
-      }`}>
-        {/* Header */}
+      {/* Modern Collapsible Left Sidebar */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
+        isMobileOpen={isMobileSidebarOpen}
+        setIsMobileOpen={setIsMobileSidebarOpen}
+        weakChapterCount={weakAreas.length}
+        onClearAllProgress={handleClearAllProgress}
+        onOpenTargetModal={() => setIsTargetModalOpen(true)}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        profile={profile}
+      />
+
+      {/* Main Content Area beside Sidebar */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
+        
+        {/* Streamlined Slim Top Header */}
         <Header
+          onToggleSidebar={() => {
+            if (window.innerWidth < 768) {
+              setIsMobileSidebarOpen(prev => !prev);
+            } else {
+              setIsSidebarCollapsed(prev => !prev);
+            }
+          }}
+          isSidebarCollapsed={isSidebarCollapsed}
           profile={profile}
           chapters={chapters}
           studySessions={studySessions}
           quizAttempts={quizAttempts}
           virtualPlants={virtualPlants}
-          onOpenTab={handleOpenTab}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          onClearAllProgress={handleClearAllProgress}
           onOpenTargetModal={() => setIsTargetModalOpen(true)}
-          onOpenAuthModal={() => setIsAuthModalOpen(true)}
-          syncStatus={syncStatus}
-          theme={theme}
-          toggleTheme={toggleTheme}
+          onOpenTab={handleOpenTab}
           isXpModalOpen={isXpModalOpen}
           setIsXpModalOpen={setIsXpModalOpen}
         />
 
-        {/* Navigation */}
-        <Navigation
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          weakChapterCount={weakAreas.length}
-          chapters={chapters}
-          studySessions={studySessions}
-          quizAttempts={quizAttempts}
-          virtualPlants={virtualPlants}
-          onOpenXpModal={() => setIsXpModalOpen(true)}
-        />
+        {/* Scrollable Content Container */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+          
+          {activeTab === 'dashboard' && (
+            <Dashboard
+              subjects={SUBJECTS}
+              chapters={chapters}
+              weakAreas={weakAreas}
+              toDos={toDos}
+              setToDos={setToDos}
+              studySessions={studySessions}
+              profile={profile}
+              virtualPlants={virtualPlants}
+              quizAttempts={quizAttempts}
+              onOpenTab={handleOpenTab}
+            />
+          )}
+
+          {activeTab === 'syllabus' && (
+            <SyllabusTracker
+              subjects={SUBJECTS}
+              chapters={chapters}
+              setChapters={setChapters}
+              setToDos={setToDos}
+              selectedSubjectFilter={selectedSubjectFilter}
+              searchQuery={searchQuery}
+            />
+          )}
+
+          <div className={activeTab === 'timer' ? 'block' : 'hidden'}>
+            <StudyTimer
+              subjects={SUBJECTS}
+              chapters={chapters}
+              studySessions={studySessions}
+              setStudySessions={setStudySessions}
+              virtualPlants={virtualPlants}
+              setVirtualPlants={setVirtualPlants}
+            />
+          </div>
+
+          {activeTab === 'quiz' && (
+            <QuizAnalytics
+              subjects={SUBJECTS}
+              chapters={chapters}
+              quizQuestions={quizQuestions}
+              setQuizQuestions={setQuizQuestions}
+              quizAttempts={quizAttempts}
+              setQuizAttempts={setQuizAttempts}
+              weakAreas={weakAreas}
+              onOpenTab={handleOpenTab}
+            />
+          )}
+
+          {activeTab === 'formulas' && (
+            <FormulaSheet
+              subjects={SUBJECTS}
+              formulaCards={INITIAL_FORMULA_CARDS}
+              searchQuery={searchQuery}
+            />
+          )}
+
+          {activeTab === 'sample_papers' && (
+            <SamplePaperTracker
+              subjects={SUBJECTS}
+            />
+          )}
+
+        </main>
+
+        {/* Global App Footer */}
+        <footer id="app-global-footer" className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10 mt-auto border-t border-stone-200 dark:border-stone-800 text-center space-y-3">
+          <p className="text-xs sm:text-sm font-extrabold text-stone-700 dark:text-stone-300 max-w-2xl mx-auto leading-relaxed">
+            "Your dedication today builds your victory tomorrow. Believe in yourself, stay consistent, and conquer your Class 10 Board Exams with total confidence! 🌟"
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-stone-600 dark:text-stone-300">
+            <span className="font-semibold text-stone-700 dark:text-stone-300">Created with ❤️ By Pushpam Kumar</span>
+            <span className="text-stone-400 dark:text-stone-600">•</span>
+            <span className="text-stone-600 dark:text-stone-400 font-bold">Stracked</span>
+            <span className="text-stone-400 dark:text-stone-600">•</span>
+            <span className="text-stone-600 dark:text-stone-400 font-medium">more projects on :-</span>
+            <a
+              id="footer-pamstudio-link"
+              href="https://pamstudio.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-stone-900 dark:text-stone-300 hover:text-stone-700 dark:hover:text-stone-100 font-extrabold transition-colors no-underline"
+              title="Visit PAM Studio (pamstudio.vercel.app)"
+            >
+              PAM Studio
+            </a>
+          </div>
+        </footer>
+
       </div>
-
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        
-        {activeTab === 'dashboard' && (
-          <Dashboard
-            subjects={SUBJECTS}
-            chapters={chapters}
-            weakAreas={weakAreas}
-            toDos={toDos}
-            setToDos={setToDos}
-            studySessions={studySessions}
-            profile={profile}
-            virtualPlants={virtualPlants}
-            quizAttempts={quizAttempts}
-            onOpenTab={handleOpenTab}
-          />
-        )}
-
-        {activeTab === 'syllabus' && (
-          <SyllabusTracker
-            subjects={SUBJECTS}
-            chapters={chapters}
-            setChapters={setChapters}
-            setToDos={setToDos}
-            selectedSubjectFilter={selectedSubjectFilter}
-            searchQuery={searchQuery}
-          />
-        )}
-
-        <div className={activeTab === 'timer' ? 'block' : 'hidden'}>
-          <StudyTimer
-            subjects={SUBJECTS}
-            chapters={chapters}
-            studySessions={studySessions}
-            setStudySessions={setStudySessions}
-            virtualPlants={virtualPlants}
-            setVirtualPlants={setVirtualPlants}
-          />
-        </div>
-
-        {activeTab === 'quiz' && (
-          <QuizAnalytics
-            subjects={SUBJECTS}
-            chapters={chapters}
-            quizQuestions={quizQuestions}
-            setQuizQuestions={setQuizQuestions}
-            quizAttempts={quizAttempts}
-            setQuizAttempts={setQuizAttempts}
-            weakAreas={weakAreas}
-            onOpenTab={handleOpenTab}
-          />
-        )}
-
-        {activeTab === 'formulas' && (
-          <FormulaSheet
-            subjects={SUBJECTS}
-            formulaCards={INITIAL_FORMULA_CARDS}
-            searchQuery={searchQuery}
-          />
-        )}
-
-        {activeTab === 'sample_papers' && (
-          <SamplePaperTracker
-            subjects={SUBJECTS}
-          />
-        )}
-
-      </main>
-
-      {/* Global App Footer */}
-      <footer id="app-global-footer" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-10 mt-8 border-t border-stone-200 dark:border-stone-800 text-center space-y-3">
-        <p className="text-xs sm:text-sm font-extrabold text-stone-700 dark:text-stone-300 max-w-2xl mx-auto leading-relaxed">
-          "Your dedication today builds your victory tomorrow. Believe in yourself, stay consistent, and conquer your Class 10 Board Exams with total confidence! 🌟"
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-stone-600 dark:text-stone-300">
-          <span className="font-semibold text-stone-700 dark:text-stone-300">Created with ❤️ By Pushpam Kumar</span>
-          <span className="text-stone-400 dark:text-stone-600">•</span>
-          <span className="text-stone-600 dark:text-stone-400">StrackCBSE(Class10).io</span>
-          <span className="text-stone-400 dark:text-stone-600">•</span>
-          <span className="text-stone-600 dark:text-stone-400 font-medium">more projects on :-</span>
-          <a
-            id="footer-pamstudio-link"
-            href="https://pamstudio.vercel.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-stone-900 dark:text-stone-300 hover:text-stone-700 dark:hover:text-stone-100 font-extrabold transition-colors no-underline"
-            title="Visit PAM Studio (pamstudio.vercel.app)"
-          >
-            PAM Studio
-          </a>
-        </div>
-      </footer>
 
       {/* Target Exam Date Customizer Modal */}
       <TargetExamModal

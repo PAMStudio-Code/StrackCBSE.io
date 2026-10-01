@@ -36,6 +36,7 @@ import { parseAudioUrl, ParsedAudioInfo } from '../utils/audioUrlParser';
 import { EmbeddedAudioPlayer } from './EmbeddedAudioPlayer';
 import confetti from 'canvas-confetti';
 import { VirtualGarden, getPlantForSessionIndex } from './VirtualGarden';
+import { STORAGE_KEYS, getMigratedStorageItem } from '../utils/storage';
 
 interface StudyTimerProps {
   subjects: Subject[];
@@ -56,28 +57,28 @@ export const StudyTimer: React.FC<StudyTimerProps> = ({
 }) => {
   // Persistent timer state across reloads & navigation
   const [timerMode, setTimerMode] = useState<'pomodoro' | 'short_break' | 'long_break'>(() => {
-    return (localStorage.getItem('cbse_timer_mode') as any) || 'pomodoro';
+    return (getMigratedStorageItem(STORAGE_KEYS.TIMER_MODE, ['strack_timer_mode', 'cbse_timer_mode']) as any) || 'pomodoro';
   });
   const [durationMinutes, setDurationMinutes] = useState<number>(() => {
-    const saved = localStorage.getItem('cbse_timer_duration');
+    const saved = getMigratedStorageItem(STORAGE_KEYS.TIMER_DURATION, ['strack_timer_duration', 'cbse_timer_duration']);
     return saved ? Number(saved) : 25;
   });
   const [isRunning, setIsRunning] = useState<boolean>(() => {
-    const savedRunning = localStorage.getItem('cbse_timer_is_running') === 'true';
-    const savedEnd = localStorage.getItem('cbse_timer_end_timestamp');
+    const savedRunning = getMigratedStorageItem(STORAGE_KEYS.TIMER_IS_RUNNING, ['strack_timer_is_running', 'cbse_timer_is_running']) === 'true';
+    const savedEnd = getMigratedStorageItem(STORAGE_KEYS.TIMER_END_TIMESTAMP, ['strack_timer_end_timestamp', 'cbse_timer_end_timestamp']);
     if (savedRunning && savedEnd) {
       return Number(savedEnd) > Date.now();
     }
     return false;
   });
   const [timeLeftSeconds, setTimeLeftSeconds] = useState<number>(() => {
-    const savedRunning = localStorage.getItem('cbse_timer_is_running') === 'true';
-    const savedEnd = localStorage.getItem('cbse_timer_end_timestamp');
+    const savedRunning = getMigratedStorageItem(STORAGE_KEYS.TIMER_IS_RUNNING, ['strack_timer_is_running', 'cbse_timer_is_running']) === 'true';
+    const savedEnd = getMigratedStorageItem(STORAGE_KEYS.TIMER_END_TIMESTAMP, ['strack_timer_end_timestamp', 'cbse_timer_end_timestamp']);
     if (savedRunning && savedEnd) {
       const diff = Math.max(0, Math.round((Number(savedEnd) - Date.now()) / 1000));
       return diff;
     }
-    const savedTime = localStorage.getItem('cbse_timer_time_left');
+    const savedTime = getMigratedStorageItem(STORAGE_KEYS.TIMER_TIME_LEFT, ['strack_timer_time_left', 'cbse_timer_time_left']);
     return savedTime ? Number(savedTime) : 25 * 60;
   });
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('science');
@@ -92,7 +93,7 @@ export const StudyTimer: React.FC<StudyTimerProps> = ({
   // Custom Music Track State (Stored in localStorage)
   const [customTracks, setCustomTracks] = useState<CustomTrack[]>(() => {
     try {
-      const saved = localStorage.getItem('cbse_custom_timer_music_v2');
+      const saved = getMigratedStorageItem(STORAGE_KEYS.TIMER_MUSIC, ['strack_custom_timer_music_v2', 'cbse_custom_timer_music_v2']);
       if (saved) return JSON.parse(saved);
     } catch (e) {}
     return [
@@ -135,6 +136,7 @@ export const StudyTimer: React.FC<StudyTimerProps> = ({
   // Save custom tracks to localStorage
   useEffect(() => {
     try {
+      localStorage.setItem(STORAGE_KEYS.TIMER_MUSIC, JSON.stringify(customTracks));
       localStorage.setItem('cbse_custom_timer_music_v2', JSON.stringify(customTracks));
     } catch (e) {}
   }, [customTracks]);
@@ -227,15 +229,16 @@ export const StudyTimer: React.FC<StudyTimerProps> = ({
 
   // Sync timer state changes to localStorage
   useEffect(() => {
-    localStorage.setItem('cbse_timer_mode', timerMode);
-    localStorage.setItem('cbse_timer_duration', String(durationMinutes));
-    localStorage.setItem('cbse_timer_is_running', String(isRunning));
-    localStorage.setItem('cbse_timer_time_left', String(timeLeftSeconds));
+    localStorage.setItem(STORAGE_KEYS.TIMER_MODE, timerMode);
+    localStorage.setItem(STORAGE_KEYS.TIMER_DURATION, String(durationMinutes));
+    localStorage.setItem(STORAGE_KEYS.TIMER_IS_RUNNING, String(isRunning));
+    localStorage.setItem(STORAGE_KEYS.TIMER_TIME_LEFT, String(timeLeftSeconds));
 
     if (isRunning) {
       const endTs = Date.now() + timeLeftSeconds * 1000;
-      localStorage.setItem('cbse_timer_end_timestamp', String(endTs));
+      localStorage.setItem(STORAGE_KEYS.TIMER_END_TIMESTAMP, String(endTs));
     } else {
+      localStorage.removeItem(STORAGE_KEYS.TIMER_END_TIMESTAMP);
       localStorage.removeItem('cbse_timer_end_timestamp');
     }
   }, [timerMode, durationMinutes, isRunning]);
@@ -247,7 +250,8 @@ export const StudyTimer: React.FC<StudyTimerProps> = ({
     const mins = mode === 'pomodoro' ? 25 : mode === 'short_break' ? 5 : 15;
     setDurationMinutes(mins);
     setTimeLeftSeconds(mins * 60);
-    localStorage.setItem('cbse_timer_time_left', String(mins * 60));
+    localStorage.setItem(STORAGE_KEYS.TIMER_TIME_LEFT, String(mins * 60));
+    localStorage.removeItem(STORAGE_KEYS.TIMER_END_TIMESTAMP);
     localStorage.removeItem('cbse_timer_end_timestamp');
   };
 
@@ -255,11 +259,12 @@ export const StudyTimer: React.FC<StudyTimerProps> = ({
   const handleToggleRunning = () => {
     if (!isRunning) {
       const endTs = Date.now() + timeLeftSeconds * 1000;
-      localStorage.setItem('cbse_timer_end_timestamp', String(endTs));
-      localStorage.setItem('cbse_timer_is_running', 'true');
+      localStorage.setItem(STORAGE_KEYS.TIMER_END_TIMESTAMP, String(endTs));
+      localStorage.setItem(STORAGE_KEYS.TIMER_IS_RUNNING, 'true');
       setIsRunning(true);
     } else {
-      localStorage.setItem('cbse_timer_is_running', 'false');
+      localStorage.setItem(STORAGE_KEYS.TIMER_IS_RUNNING, 'false');
+      localStorage.removeItem(STORAGE_KEYS.TIMER_END_TIMESTAMP);
       localStorage.removeItem('cbse_timer_end_timestamp');
       setIsRunning(false);
     }
@@ -270,7 +275,7 @@ export const StudyTimer: React.FC<StudyTimerProps> = ({
     let interval: any = null;
     if (isRunning) {
       interval = setInterval(() => {
-        const savedEnd = localStorage.getItem('cbse_timer_end_timestamp');
+        const savedEnd = localStorage.getItem(STORAGE_KEYS.TIMER_END_TIMESTAMP) || localStorage.getItem('cbse_timer_end_timestamp');
         let remaining = timeLeftSeconds - 1;
         if (savedEnd) {
           remaining = Math.max(0, Math.round((Number(savedEnd) - Date.now()) / 1000));
@@ -279,7 +284,8 @@ export const StudyTimer: React.FC<StudyTimerProps> = ({
         if (remaining <= 0) {
           setIsRunning(false);
           setTimeLeftSeconds(0);
-          localStorage.setItem('cbse_timer_is_running', 'false');
+          localStorage.setItem(STORAGE_KEYS.TIMER_IS_RUNNING, 'false');
+          localStorage.removeItem(STORAGE_KEYS.TIMER_END_TIMESTAMP);
           localStorage.removeItem('cbse_timer_end_timestamp');
           soundEngine.playChime();
           soundEngine.stopAmbientSound();

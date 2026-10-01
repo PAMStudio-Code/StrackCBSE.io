@@ -16,7 +16,8 @@ import {
   CheckSquare,
   Plus,
   PlusCircle,
-  ListTodo
+  ListTodo,
+  Download
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -224,6 +225,36 @@ export const SyllabusTracker: React.FC<SyllabusTrackerProps> = ({
   );
   const percent = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0;
 
+  // Export syllabus progress to Stracked_CBSE_Progress.json
+  const handleExportProgress = () => {
+    try {
+      const exportPayload = {
+        app: 'Stracked',
+        title: 'Stracked — CBSE Study & Syllabus Tracker',
+        exportedAt: new Date().toISOString(),
+        summary: {
+          totalTopics,
+          completedTopics,
+          completionPercentage: percent
+        },
+        chapters
+      };
+      const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'Stracked_CBSE_Progress.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      setAddedNotice('Exported Stracked_CBSE_Progress.json successfully!');
+      setTimeout(() => setAddedNotice(null), 3000);
+    } catch (e) {
+      console.error('Failed to export syllabus progress:', e);
+    }
+  };
+
   // Group chapters by Unit
   const unitsMap = new Map<string, { unitName: string; subjectId: SubjectId; chapters: Chapter[] }>();
   displayedChapters.forEach(ch => {
@@ -247,13 +278,23 @@ export const SyllabusTracker: React.FC<SyllabusTrackerProps> = ({
 
       {/* Subject Filter Bar */}
       <div className="bg-white border border-stone-200/90 rounded-2xl p-4 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <h3 className="font-bold text-stone-900 text-sm flex items-center gap-2">
             <Layers className="w-4 h-4 text-emerald-600" /> Filter CBSE Subjects
           </h3>
-          <span className="text-xs text-emerald-800 font-semibold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
-            {completedTopics}/{totalTopics} Topics Completed ({percent}%)
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-emerald-800 font-semibold bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+              {completedTopics}/{totalTopics} Topics Completed ({percent}%)
+            </span>
+            <button
+              onClick={handleExportProgress}
+              className="text-xs font-semibold px-2.5 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg border border-stone-300/80 flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Export syllabus data to Stracked_CBSE_Progress.json"
+            >
+              <Download className="w-3.5 h-3.5 text-stone-600" />
+              <span>Export Progress</span>
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
