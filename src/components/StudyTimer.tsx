@@ -486,10 +486,12 @@ export const StudyTimer: React.FC<StudyTimerProps> = ({
 
             <button
               onClick={handleReset}
-              className="p-3.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-2xl border border-stone-200 transition-colors cursor-pointer"
-              title="Reset Clock"
+              className="px-5 py-3.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+              title="Restart Timer (Reset active in-progress timer without affecting saved history)"
+              aria-label="Restart Timer"
             >
-              <RotateCcw className="w-5 h-5" />
+              <RotateCcw className="w-4 h-4" />
+              <span>Restart</span>
             </button>
           </div>
 
@@ -956,6 +958,23 @@ export const StudyTimer: React.FC<StudyTimerProps> = ({
         totalFocusMins={studySessions.reduce((acc, s) => acc + s.durationMinutes, 0)}
         currentTimerProgress={progressPercent}
         isTimerRunning={isRunning}
+        timeLeftSeconds={timeLeftSeconds}
+        durationMinutes={durationMinutes}
+        activeSubjectName={subjects.find(s => s.id === selectedSubjectId)?.name || 'Class 10 Study'}
+        timerMode={timerMode}
+        onDeletePlant={(plot) => {
+          if (setVirtualPlants) {
+            setVirtualPlants(prev => {
+              const idx = prev.findIndex(p => p.name === plot.floraName || p.earnedAt === plot.harvestedAt);
+              if (idx !== -1) {
+                const next = [...prev];
+                next.splice(idx, 1);
+                return next;
+              }
+              return prev.length > 0 ? prev.slice(1) : prev;
+            });
+          }
+        }}
       />
 
     </div>

@@ -34,6 +34,7 @@ import { StudyTimer } from './components/StudyTimer';
 import { QuizAnalytics } from './components/QuizAnalytics';
 import { FormulaSheet } from './components/FormulaSheet';
 import { SamplePaperTracker } from './components/SamplePaperTracker';
+import { AboutPage } from './components/AboutPage';
 import { TargetExamModal } from './components/TargetExamModal';
 import { AuthModal } from './components/AuthModal';
 import { STORAGE_KEYS, getMigratedStorageItem, migrateLocalStorage } from './utils/storage';
@@ -518,6 +519,13 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'about' && (
+            <AboutPage
+              onBackToDashboard={() => handleOpenTab('dashboard')}
+              onOpenTab={handleOpenTab}
+            />
+          )}
+
         </main>
 
         {/* Global App Footer */}
@@ -528,7 +536,14 @@ export default function App() {
           <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-stone-600 dark:text-stone-300">
             <span className="font-semibold text-stone-700 dark:text-stone-300">Created with ❤️ By Pushpam Kumar</span>
             <span className="text-stone-400 dark:text-stone-600">•</span>
-            <span className="text-stone-600 dark:text-stone-400 font-bold">Stracked</span>
+            <button
+              type="button"
+              onClick={() => handleOpenTab('about')}
+              className="text-stone-600 dark:text-stone-400 font-bold hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+              title="Learn more about Stracked"
+            >
+              Stracked
+            </button>
             <span className="text-stone-400 dark:text-stone-600">•</span>
             <span className="text-stone-600 dark:text-stone-400 font-medium">more projects on :-</span>
             <a

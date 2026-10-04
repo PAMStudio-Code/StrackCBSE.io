@@ -15,7 +15,8 @@ import {
   X,
   Target,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import { StudentProfile } from '../types';
 
@@ -232,6 +233,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
               </button>
             )}
+
+            {/* About Stracked Page */}
+            {renderNavButton({
+              id: 'about',
+              label: 'About',
+              icon: Info,
+              description: 'CBSE Class 10 Companion Info'
+            })}
 
             {/* Theme Toggle (Dark/Light mode) */}
             {toggleTheme && (

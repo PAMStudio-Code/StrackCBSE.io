@@ -1,251 +1,881 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { VirtualPlant } from '../types';
-import { Sparkles, Trophy, Flame, TreePine, Award, Info, X, Sprout, Heart, ShieldCheck, Zap } from 'lucide-react';
+import { 
+  Sprout, 
+  Sparkles, 
+  Flame, 
+  Lock, 
+  CheckCircle2, 
+  RotateCcw, 
+  X, 
+  ChevronDown, 
+  ChevronUp, 
+  Clock, 
+  Trophy, 
+  Info,
+  Calendar,
+  Layers,
+  ArrowRight,
+  Trash2
+} from 'lucide-react';
 
-interface VirtualGardenProps {
+export interface VirtualGardenProps {
   virtualPlants: VirtualPlant[];
   totalFocusMins: number;
   currentTimerProgress?: number; // 0 to 100 percent
   isTimerRunning?: boolean;
+  timeLeftSeconds?: number;
+  durationMinutes?: number;
+  activeSubjectName?: string;
+  timerMode?: 'pomodoro' | 'short_break' | 'long_break';
+  onDeletePlant?: (plot: TerrariumPlot) => void;
 }
 
+export type FloraTier = 'Sprout' | 'Fern' | 'Lotus' | 'Golden Flora';
+
 export const PLANT_TEMPLATES = [
-  { name: 'Focus Sprout', icon: '🌱', stage: 'sprout', xp: 40, description: 'Sprouted from your very first 25-minute Pomodoro study sprint.', bgGrad: 'from-emerald-50 to-emerald-100/60', border: 'border-emerald-200', tagBg: 'bg-emerald-100 text-emerald-800' },
-  { name: 'Concentration Fern', icon: '🌿', stage: 'growing', xp: 40, description: 'Rooted deeply after consecutive focused study sessions.', bgGrad: 'from-teal-50 to-teal-100/60', border: 'border-teal-200', tagBg: 'bg-teal-100 text-teal-800' },
-  { name: 'Mindfulness Bonsai', icon: '🪴', stage: 'blooming', xp: 40, description: 'Carefully shaped by calm, undistracted revision hours.', bgGrad: 'from-emerald-50 via-teal-50 to-purple-50', border: 'border-purple-200', tagBg: 'bg-purple-100 text-purple-800' },
-  { name: 'Scholar Sakura', icon: '🌸', stage: 'blooming', xp: 50, description: 'Blooms brilliantly when syllabus chapters are mastered.', bgGrad: 'from-pink-50 to-rose-100/60', border: 'border-pink-200', tagBg: 'bg-pink-100 text-pink-800' },
-  { name: 'Golden Board Oak', icon: '🌳', stage: 'golden', xp: 60, description: 'A majestic golden tree representing peak Board Exam readiness!', bgGrad: 'from-amber-50 via-yellow-50 to-amber-100', border: 'border-amber-300', tagBg: 'bg-amber-100 text-amber-900' },
-  { name: '100 Percentile Lotus', icon: '🪷', stage: 'golden', xp: 75, description: 'Extremely rare lotus unlocked by persistent high-yield revision.', bgGrad: 'from-amber-100 via-rose-50 to-purple-100', border: 'border-amber-400', tagBg: 'bg-gradient-to-r from-amber-500 to-purple-600 text-white' },
+  { name: 'Focus Sprout', icon: '🌱', stage: 'sprout', xp: 40, description: 'Sprouted from your very first 25-minute Pomodoro study sprint.' },
+  { name: 'Concentration Fern', icon: '🌿', stage: 'growing', xp: 40, description: 'Rooted deeply after consecutive focused study sessions.' },
+  { name: 'Scholar Lotus', icon: '🪷', stage: 'blooming', xp: 50, description: 'Blooms brilliantly when syllabus chapters are mastered.' },
+  { name: 'Golden Board Oak', icon: '🌻', stage: 'golden', xp: 60, description: 'A majestic golden tree representing peak Board Exam readiness!' },
 ];
 
 export function getPlantForSessionIndex(index: number) {
-  const template = PLANT_TEMPLATES[index % PLANT_TEMPLATES.length];
-  return template;
+  return PLANT_TEMPLATES[index % PLANT_TEMPLATES.length];
+}
+
+export interface TerrariumPlot {
+  slotId: number; // 0, 1, 2, 3
+  status: 'empty' | 'growing' | 'harvested';
+  label?: string;
+  progress?: number;
+  tier?: FloraTier;
+  floraName?: string;
+  icon?: string;
+  subjectName?: string;
+  harvestedAt?: string;
+  durationMinutes?: number;
+  xpEarned?: number;
+}
+
+const STORAGE_KEYS = {
+  SLOTS: 'stracked_terrarium_slots',
+  HISTORY: 'stracked_flora_history',
+  XP: 'stracked_terrarium_xp',
+  HARVEST_COUNT: 'stracked_terrarium_harvest_count',
+  STREAK: 'stracked_terrarium_streak'
+};
+
+const TIER_CONFIGS: Record<FloraTier, {
+  name: string;
+  icon: string;
+  badgeBg: string;
+  glowBg: string;
+  desc: string;
+}> = {
+  'Sprout': {
+    name: 'Focus Sprout',
+    icon: '🌱',
+    badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800',
+    glowBg: 'from-emerald-500/10 to-teal-500/10',
+    desc: 'Sprouted from focused revision and disciplined time blocking.'
+  },
+  'Fern': {
+    name: 'Concentration Fern',
+    icon: '🌿',
+    badgeBg: 'bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800',
+    glowBg: 'from-teal-500/10 to-emerald-500/10',
+    desc: 'Deep roots formed through uninterrupted chapter problem solving.'
+  },
+  'Lotus': {
+    name: 'Scholar Lotus',
+    icon: '🪷',
+    badgeBg: 'bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800',
+    glowBg: 'from-purple-500/10 to-pink-500/10',
+    desc: 'Elegantly bloomed through master-level NCERT syllabus comprehension.'
+  },
+  'Golden Flora': {
+    name: 'Golden Board Oak',
+    icon: '🌻',
+    badgeBg: 'bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
+    glowBg: 'from-amber-500/15 to-yellow-500/15',
+    desc: 'Supreme golden blossom representing peak CBSE Class 10 board readiness!'
+  }
+};
+
+const TIERS_CYCLE: FloraTier[] = ['Sprout', 'Fern', 'Lotus', 'Golden Flora'];
+
+// Format seconds to mm:ss
+function formatSeconds(totalSecs: number): string {
+  const m = Math.floor(Math.max(0, totalSecs) / 60);
+  const s = Math.floor(Math.max(0, totalSecs) % 60);
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
 export const VirtualGarden: React.FC<VirtualGardenProps> = ({
-  virtualPlants,
-  totalFocusMins,
+  virtualPlants = [],
+  totalFocusMins = 0,
   currentTimerProgress = 0,
-  isTimerRunning = false
+  isTimerRunning = false,
+  timeLeftSeconds,
+  durationMinutes = 25,
+  activeSubjectName = 'Science',
+  timerMode = 'pomodoro',
+  onDeletePlant
 }) => {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'sprout' | 'growing' | 'blooming' | 'golden'>('all');
-  const [selectedPlant, setSelectedPlant] = useState<VirtualPlant | null>(null);
+  // 1. Terrarium Slots State (4 Slots)
+  const [plots, setPlots] = useState<TerrariumPlot[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.SLOTS);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length === 4) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
 
-  const filteredPlants = virtualPlants.filter(p => {
-    if (activeFilter === 'all') return true;
-    return p.stage === activeFilter;
+    // Initialize initial 4 plots from past virtualPlants if available
+    const initialPlots: TerrariumPlot[] = [
+      { slotId: 0, status: 'empty', label: 'Awaiting Seed', progress: 0 },
+      { slotId: 1, status: 'empty', label: 'Awaiting Seed', progress: 0 },
+      { slotId: 2, status: 'empty', label: 'Awaiting Seed', progress: 0 },
+      { slotId: 3, status: 'empty', label: 'Awaiting Seed', progress: 0 }
+    ];
+
+    if (virtualPlants.length > 0) {
+      const numToSeed = Math.min(2, virtualPlants.length);
+      for (let i = 0; i < numToSeed; i++) {
+        const plant = virtualPlants[i];
+        const tier = TIERS_CYCLE[i % TIERS_CYCLE.length];
+        initialPlots[i] = {
+          slotId: i,
+          status: 'harvested',
+          tier: tier,
+          floraName: plant.name || TIER_CONFIGS[tier].name,
+          icon: plant.icon || TIER_CONFIGS[tier].icon,
+          subjectName: plant.subjectName || 'CBSE Class 10',
+          harvestedAt: plant.earnedAt || new Date().toISOString(),
+          durationMinutes: plant.sessionMinutes || 25,
+          xpEarned: 50
+        };
+      }
+    }
+
+    return initialPlots;
   });
 
-  const nextPlantToEarn = PLANT_TEMPLATES[(virtualPlants.length) % PLANT_TEMPLATES.length];
+  // 2. Lifetime Flora History and XP
+  const [floraHistory, setFloraHistory] = useState<TerrariumPlot[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.HISTORY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
+
+  const [totalXp, setTotalXp] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.XP);
+      if (saved) return Number(saved);
+    } catch (e) {}
+    return Math.max(150, (virtualPlants.length || 3) * 50);
+  });
+
+  // 3. Total Harvested Count (persisted in localStorage)
+  const [totalHarvestedCount, setTotalHarvestedCount] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.HARVEST_COUNT);
+      if (saved) return Number(saved);
+    } catch (e) {}
+    const cur = plots.filter(p => p.status === 'harvested').length;
+    return Math.max(cur, virtualPlants.length || cur);
+  });
+
+  // 4. Inspection Modal & History Drawer State
+  const [inspectingPlot, setInspectingPlot] = useState<TerrariumPlot | null>(null);
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
+  const [bannerNotice, setBannerNotice] = useState<string | null>(null);
+
+  // Save plots to localStorage whenever changed
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.SLOTS, JSON.stringify(plots));
+    } catch (e) {}
+  }, [plots]);
+
+  // Save flora history, harvest count & XP to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(floraHistory));
+      localStorage.setItem(STORAGE_KEYS.XP, totalXp.toString());
+      localStorage.setItem(STORAGE_KEYS.HARVEST_COUNT, totalHarvestedCount.toString());
+    } catch (e) {}
+  }, [floraHistory, totalXp, totalHarvestedCount]);
+
+  // Track virtual plants count to automatically harvest a new plant when timer session completes
+  const prevPlantsCount = useRef(virtualPlants.length);
+  useEffect(() => {
+    if (virtualPlants.length > prevPlantsCount.current) {
+      const newlyEarned = virtualPlants[0];
+      prevPlantsCount.current = virtualPlants.length;
+
+      // Lock newly earned plant into first non-harvested slot
+      setPlots(prev => {
+        const nextSlots = [...prev];
+        let targetIndex = nextSlots.findIndex(s => s.status !== 'harvested');
+        
+        // If all 4 were harvested, archive batch and place in slot 0
+        if (targetIndex === -1) {
+          setFloraHistory(h => [...nextSlots, ...h]);
+          targetIndex = 0;
+          nextSlots[1] = { slotId: 1, status: 'empty', label: 'Awaiting Seed', progress: 0 };
+          nextSlots[2] = { slotId: 2, status: 'empty', label: 'Awaiting Seed', progress: 0 };
+          nextSlots[3] = { slotId: 3, status: 'empty', label: 'Awaiting Seed', progress: 0 };
+        }
+
+        const tierIndex = (floraHistory.length + targetIndex) % TIERS_CYCLE.length;
+        const tier = TIERS_CYCLE[tierIndex];
+
+        nextSlots[targetIndex] = {
+          slotId: targetIndex,
+          status: 'harvested',
+          tier: tier,
+          floraName: newlyEarned.name || TIER_CONFIGS[tier].name,
+          icon: newlyEarned.icon || TIER_CONFIGS[tier].icon,
+          subjectName: newlyEarned.subjectName || activeSubjectName || 'CBSE Study',
+          harvestedAt: new Date().toISOString(),
+          durationMinutes: newlyEarned.sessionMinutes || durationMinutes || 25,
+          xpEarned: 50
+        };
+
+        return nextSlots;
+      });
+
+      // Add 50 XP & Increment Harvested
+      setTotalXp(prevXp => prevXp + 50);
+      setTotalHarvestedCount(c => c + 1);
+      setBannerNotice(`🎉 Harvest Complete! New "${newlyEarned.name || 'Flora'}" locked in terrarium (+50 Focus XP)!`);
+      setTimeout(() => setBannerNotice(null), 6000);
+    } else {
+      prevPlantsCount.current = virtualPlants.length;
+    }
+  }, [virtualPlants.length, activeSubjectName, durationMinutes, floraHistory.length]);
+
+  // Handle Deleting a Specific Session from a Garden Slot
+  const handleDeleteSession = (slotId: number) => {
+    const plotToDelete = plots.find(p => p.slotId === slotId);
+    const floraName = plotToDelete?.floraName || 'Session';
+
+    // 1. Reset that specific plot to default: { status: 'empty', label: 'Awaiting Seed', progress: 0 }
+    // Overwrite the saved sessions key in localStorage with the updated array immediately
+    const defaultPlot: TerrariumPlot = {
+      slotId,
+      status: 'empty',
+      label: 'Awaiting Seed',
+      progress: 0
+    };
+
+    setPlots(prev => {
+      const updated = prev.map((p, idx) => {
+        if (p.slotId === slotId || idx === slotId) {
+          return defaultPlot;
+        }
+        return p;
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.SLOTS, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // 2. Adjust Stats on Deletion:
+    // Ensure the deleted session subtracts 50 XP from total Focus XP and reduces Harvested count by 1 (clamped to 0 minimum).
+    // Update both metrics in localStorage immediately.
+    setTotalXp(prev => {
+      const nextXp = Math.max(0, prev - 50);
+      try {
+        localStorage.setItem(STORAGE_KEYS.XP, nextXp.toString());
+      } catch (e) {}
+      return nextXp;
+    });
+
+    setTotalHarvestedCount(prev => {
+      const nextCount = Math.max(0, prev - 1);
+      try {
+        localStorage.setItem(STORAGE_KEYS.HARVEST_COUNT, nextCount.toString());
+      } catch (e) {}
+      return nextCount;
+    });
+
+    // Remove from floraHistory if present
+    setFloraHistory(prev => {
+      const updatedHistory = prev.filter(item => 
+        item.slotId !== slotId || (plotToDelete?.harvestedAt && item.harvestedAt !== plotToDelete.harvestedAt)
+      );
+      try {
+        localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updatedHistory));
+      } catch (e) {}
+      return updatedHistory;
+    });
+
+    // Notify parent if hook passed
+    if (onDeletePlant && plotToDelete) {
+      onDeletePlant(plotToDelete);
+    }
+
+    setBannerNotice(`🗑️ Deleted "${floraName}" (-50 XP). Plot 0${slotId + 1} reset to "Awaiting Seed".`);
+    setTimeout(() => setBannerNotice(null), 4000);
+  };
+
+  // Find index of currently active plot (first unharvested slot)
+  const activePlotIndex = useMemo(() => {
+    const idx = plots.findIndex(p => p.status !== 'harvested');
+    return idx !== -1 ? idx : -1;
+  }, [plots]);
+
+  // Compute effective remaining seconds for live growth stage
+  const effectiveRemainingSecs = useMemo(() => {
+    if (timeLeftSeconds !== undefined) {
+      return timeLeftSeconds;
+    }
+    const durationSecs = durationMinutes * 60;
+    return Math.max(0, Math.round(durationSecs * (1 - (currentTimerProgress / 100))));
+  }, [timeLeftSeconds, durationMinutes, currentTimerProgress]);
+
+  // Visual Growth Stages (Timer-based Icon Swaps):
+  // 25m - 20m: Seed in soil (🌰)
+  // 20m - 10m: Sprout (🌱)
+  // 10m - 0m: Budding plant (🌿)
+  // 0m (Completed): Fully bloomed flora (🪷)
+  const currentGrowthStage = useMemo(() => {
+    const remainingMins = effectiveRemainingSecs / 60;
+
+    if (remainingMins > 20) {
+      return {
+        stageId: 'seed',
+        name: 'Seed in Soil',
+        icon: '🌰',
+        range: '25m - 20m',
+        desc: 'Germinating underground in nutrient-rich soil',
+        ringColor: 'text-amber-500'
+      };
+    }
+    if (remainingMins > 10) {
+      return {
+        stageId: 'sprout',
+        name: 'Sprout',
+        icon: '🌱',
+        range: '20m - 10m',
+        desc: 'Fresh green shoot breaking through soil',
+        ringColor: 'text-emerald-500'
+      };
+    }
+    if (remainingMins > 0) {
+      return {
+        stageId: 'budding',
+        name: 'Budding Plant',
+        icon: '🌿',
+        range: '10m - 0m',
+        desc: 'Bud swelling and preparing for full bloom',
+        ringColor: 'text-teal-500'
+      };
+    }
+    return {
+      stageId: 'bloomed',
+      name: 'Fully Bloomed Flora',
+      icon: '🪷',
+      range: '0m Completed',
+      desc: 'Masterwork flora ready for harvest!',
+      ringColor: 'text-purple-500'
+    };
+  }, [effectiveRemainingSecs]);
+
+  // Calculate day streak from dates of harvested flora
+  const dayStreak = useMemo(() => {
+    try {
+      const dates = new Set<string>();
+      plots.forEach(p => {
+        if (p.harvestedAt) dates.add(p.harvestedAt.split('T')[0]);
+      });
+      floraHistory.forEach(h => {
+        if (h.harvestedAt) dates.add(h.harvestedAt.split('T')[0]);
+      });
+      return Math.max(1, dates.size);
+    } catch (e) {
+      return 1;
+    }
+  }, [plots, floraHistory]);
+
+  // Archive entire 4-plot batch and reset to clean soil
+  const handleHarvestBatchAndReset = () => {
+    const harvestedPlots = plots.filter(p => p.status === 'harvested');
+    if (harvestedPlots.length > 0) {
+      setFloraHistory(prev => [...harvestedPlots, ...prev]);
+    }
+
+    setPlots([
+      { slotId: 0, status: 'empty', label: 'Awaiting Seed', progress: 0 },
+      { slotId: 1, status: 'empty', label: 'Awaiting Seed', progress: 0 },
+      { slotId: 2, status: 'empty', label: 'Awaiting Seed', progress: 0 },
+      { slotId: 3, status: 'empty', label: 'Awaiting Seed', progress: 0 }
+    ]);
+
+    setTotalXp(x => x + 100);
+    setBannerNotice('🏆 Full Terrarium Batch archived to Greenhouse! +100 Bonus XP earned!');
+    setTimeout(() => setBannerNotice(null), 5000);
+  };
+
+  // Helper for circular progress calculations
+  const progressPercent = Math.max(0, Math.min(100, currentTimerProgress));
+  const circleRadius = 40;
+  const circumference = 2 * Math.PI * circleRadius;
+  const strokeDashoffset = circumference - (circumference * progressPercent) / 100;
+
+  const isAllHarvested = plots.every(p => p.status === 'harvested');
 
   return (
-    <div className="bg-white border border-stone-200/90 rounded-3xl p-5 sm:p-6 shadow-xs space-y-5">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-6 transition-colors">
       
-      {/* Header & Stats Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white flex items-center justify-center font-black text-xl shadow-xs">
-            🪴
-          </div>
-          <div>
-            <h3 className="font-extrabold text-stone-900 text-base flex items-center gap-2">
-              <span>Pomodoro Virtual Garden</span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider border border-emerald-200">
-                Gamified Rewards
-              </span>
+      {/* 5. Top Gamified Stat Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h3 className="font-black text-slate-900 dark:text-white text-base sm:text-lg flex items-center gap-2">
+              <span className="text-xl">🪴</span>
+              <span>Study Terrarium</span>
             </h3>
-            <p className="text-xs text-stone-500 font-medium">
-              Complete 25m focus study sprints to nurture living plants & earn XP multipliers
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 bg-stone-50 border border-stone-200/90 rounded-2xl p-1.5 self-start sm:self-auto text-xs">
-          <div className="px-3 py-1 bg-white rounded-xl font-extrabold text-stone-800 shadow-2xs border border-stone-100 flex items-center gap-1.5">
-            <Sprout className="w-4 h-4 text-emerald-600" />
-            <span>{virtualPlants.length} Plants</span>
-          </div>
-          <div className="px-3 py-1 bg-white rounded-xl font-extrabold text-stone-800 shadow-2xs border border-stone-100 flex items-center gap-1.5">
-            <Zap className="w-4 h-4 text-amber-500" />
-            <span>+{virtualPlants.length * 40} Garden XP</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Live Timer Germination Progress Banner (if timer active) */}
-      {isTimerRunning && (
-        <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-stone-900 text-white rounded-2xl p-4 shadow-sm space-y-2 border border-emerald-800">
-          <div className="flex items-center justify-between text-xs font-bold">
-            <span className="flex items-center gap-2 text-emerald-300">
-              <span className="animate-pulse">🌱</span> Live Seed Germination Progress:
-              <strong className="text-white">{nextPlantToEarn.name} ({nextPlantToEarn.icon})</strong>
+            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+              4-Plot System
             </span>
-            <span className="text-amber-300 font-extrabold">{currentTimerProgress}% Grown</span>
           </div>
-
-          <div className="h-3 w-full bg-stone-800/90 rounded-full overflow-hidden p-0.5 border border-emerald-700/50">
-            <div
-              className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 rounded-full transition-all duration-700"
-              style={{ width: `${Math.max(5, currentTimerProgress)}%` }}
-            />
-          </div>
-
-          <p className="text-[11px] text-stone-300 font-medium flex items-center justify-between">
-            <span>Keep your timer running! Completing this session will sprout your next plant into your garden.</span>
-            <span className="text-amber-300 font-bold shrink-0">+30 XP Bonus</span>
+          <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium mt-1">
+            Grow and lock rare flora in your 4-slot greenhouse through 25-minute Pomodoro focus sprints.
           </p>
         </div>
-      )}
 
-      {/* Filter Category Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-        {[
-          { id: 'all', label: `All Plants (${virtualPlants.length})`, icon: '🌿' },
-          { id: 'sprout', label: 'Sprouts', icon: '🌱' },
-          { id: 'growing', label: 'Growing', icon: '🌿' },
-          { id: 'blooming', label: 'Blooming', icon: '🌸' },
-          { id: 'golden', label: 'Golden Oaks', icon: '🌳' },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveFilter(tab.id as any)}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-              activeFilter === tab.id
-                ? 'bg-stone-900 text-white shadow-xs'
-                : 'bg-stone-100/80 hover:bg-stone-200/80 text-stone-600'
-            }`}
+        {/* Gamified Stat Metrics */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div 
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-slate-900 dark:text-white font-extrabold shadow-2xs"
+            title="Total Flora Harvested in lifetime"
           >
-            <span>{tab.icon}</span>
-            <span>{tab.label}</span>
-          </button>
-        ))}
+            <span className="text-base">🪴</span>
+            <span>{totalHarvestedCount} Harvested</span>
+          </div>
+
+          <div 
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-900 dark:text-amber-300 font-extrabold shadow-2xs"
+            title="Consecutive daily study habit streak"
+          >
+            <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
+            <span>{dayStreak} Day Streak</span>
+          </div>
+
+          <div 
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 text-emerald-900 dark:text-emerald-300 font-extrabold shadow-2xs"
+            title="+50 Focus XP awarded per completed study sprint"
+          >
+            <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>{totalXp} Focus XP</span>
+            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">(+50/session)</span>
+          </div>
+        </div>
       </div>
 
-      {/* Garden Grid Display */}
-      {filteredPlants.length === 0 ? (
-        <div className="bg-stone-50 border border-dashed border-stone-200/90 rounded-2xl p-8 text-center space-y-2">
-          <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-2xl mx-auto text-emerald-800">
-            🌱
+      {/* Banner Notice Toast */}
+      {bannerNotice && (
+        <div className="bg-emerald-600 text-white p-3.5 rounded-2xl shadow-sm text-xs sm:text-sm font-bold flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-150">
+          <div className="flex items-center gap-2">
+            <Sprout className="w-4 h-4 text-emerald-200 animate-bounce" />
+            <span>{bannerNotice}</span>
           </div>
-          <h4 className="font-extrabold text-stone-800 text-sm">No Plants in this Stage Yet</h4>
-          <p className="text-xs text-stone-500 max-w-sm mx-auto font-medium">
-            Complete a 25-minute Pomodoro study session in the Study Timer to sprout new plants!
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5">
-          {filteredPlants.map((plant, idx) => {
-            const template = PLANT_TEMPLATES.find(t => t.name === plant.name) || PLANT_TEMPLATES[idx % PLANT_TEMPLATES.length];
-
-            return (
-              <div
-                key={plant.id || idx}
-                onClick={() => setSelectedPlant(plant)}
-                className={`bg-gradient-to-b ${template.bgGrad} border ${template.border} hover:shadow-md rounded-2xl p-3.5 text-center space-y-2 transition-all group relative overflow-hidden cursor-pointer transform hover:-translate-y-1`}
-              >
-                {/* Glow ring badge */}
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-white/80 shadow-2xs border border-white flex items-center justify-center text-3xl transform group-hover:scale-110 transition-transform duration-200 my-1 relative">
-                  <span>{plant.icon}</span>
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[9px] font-bold">
-                    ✓
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-black text-stone-900 line-clamp-1">
-                    {plant.name}
-                  </div>
-                  <div className="text-[10px] text-stone-500 font-bold line-clamp-1 mt-0.5">
-                    {plant.subjectName || 'CBSE Class 10'}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-center gap-1">
-                  <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${template.tagBg}`}>
-                    {plant.stage}
-                  </span>
-                </div>
-
-                <div className="text-[9px] text-stone-400 font-medium border-t border-stone-200/50 pt-1.5 flex items-center justify-between">
-                  <span>+{plant.sessionMinutes || 25}m focus</span>
-                  <span className="text-emerald-700 font-bold">+40 XP</span>
-                </div>
-              </div>
-            );
-          })}
+          <button
+            type="button"
+            onClick={() => setBannerNotice(null)}
+            className="text-white/80 hover:text-white text-xs px-2 py-0.5 rounded-lg bg-emerald-700 cursor-pointer"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
-      {/* Next Milestone Reward Banner */}
-      <div className="bg-gradient-to-r from-emerald-500/10 via-amber-500/10 to-purple-500/10 border border-stone-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold shrink-0">
-            {nextPlantToEarn.icon}
-          </div>
-          <div>
-            <span className="font-extrabold text-stone-900 block">
-              Next Garden Unlock: {nextPlantToEarn.name}
-            </span>
-            <span className="text-stone-500 font-medium">
-              Complete your next 25-minute Pomodoro timer session to grow this plant & earn +30 XP bonus!
-            </span>
-          </div>
+      {/* 1. 4-Slot Terrarium Grid (2x2 on Mobile, 4x1 on Desktop) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        {plots.map((plot, index) => {
+          const isHarvested = plot.status === 'harvested';
+          const isActivePlot = !isHarvested && index === activePlotIndex;
+          const isEmptyWaiting = !isHarvested && !isActivePlot;
+
+          const tier = plot.tier || 'Sprout';
+          const config = TIER_CONFIGS[tier];
+
+          return (
+            <div
+              key={plot.slotId}
+              onClick={() => {
+                if (isHarvested) {
+                  setInspectingPlot(plot);
+                }
+              }}
+              className={`rounded-2xl p-4 flex flex-col justify-between transition-all duration-200 relative overflow-hidden group select-none min-h-[260px] ${
+                isHarvested
+                  ? 'bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/90 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs cursor-pointer hover:shadow-md'
+                  : isActivePlot
+                  ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-2 border-emerald-500/70 dark:border-emerald-500/80 shadow-md ring-2 ring-emerald-500/20'
+                  : 'bg-slate-50/40 dark:bg-slate-800/30 border border-dashed border-slate-300 dark:border-slate-700/80 opacity-80'
+              }`}
+            >
+              
+              {/* Slot Header with Delete Button on Harvested Card */}
+              <div className="flex items-center justify-between gap-1 w-full z-10">
+                <span className="text-[11px] font-black tracking-wider text-slate-500 dark:text-slate-400 uppercase">
+                  Plot 0{index + 1}
+                </span>
+
+                {isHarvested && (
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full border shadow-2xs ${config.badgeBg}`}>
+                      {plot.tier}
+                    </span>
+                    {/* Delete button (trash icon) in top-right corner */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleDeleteSession(plot.slotId);
+                      }}
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
+                      title="Delete this session from garden (-50 XP)"
+                      aria-label="Delete this session from garden"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {isActivePlot && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/60 dark:text-emerald-300 dark:border-emerald-700 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                    <span>{isTimerRunning ? 'Growing' : 'Active Plot'}</span>
+                  </span>
+                )}
+
+                {isEmptyWaiting && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700">
+                    {plot.label || 'Awaiting Seed'}
+                  </span>
+                )}
+              </div>
+
+              {/* Slot Center Graphic / Circular Progress Ring */}
+              <div className="my-auto py-2 flex flex-col items-center justify-center text-center z-10">
+                
+                {/* 1. Harvested Plot Center Graphic */}
+                {isHarvested && (
+                  <div className="space-y-2">
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-3xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-xs flex items-center justify-center text-4xl sm:text-5xl group-hover:scale-105 transition-transform duration-200">
+                      <span>{plot.icon || config.icon}</span>
+                      <div 
+                        className="absolute -bottom-1 -right-1 p-1 bg-emerald-500 text-white rounded-full shadow-sm"
+                        title="Harvested & locked in terrarium"
+                      >
+                        <Lock className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block">
+                      Click to inspect
+                    </span>
+                  </div>
+                )}
+
+                {/* 2. Active Plot: Circular Timer on Active Plot & Growth Stages */}
+                {isActivePlot && (
+                  <div className="space-y-1.5 w-full flex flex-col items-center">
+                    <div className="relative w-24 h-24 sm:w-28 sm:h-28 mx-auto flex items-center justify-center">
+                      
+                      {/* SVG Circular Progress Ring */}
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle
+                          cx="56"
+                          cy="56"
+                          r={circleRadius}
+                          stroke="currentColor"
+                          strokeWidth="6"
+                          className="text-slate-200 dark:text-slate-700"
+                          fill="transparent"
+                        />
+                        <circle
+                          cx="56"
+                          cy="56"
+                          r={circleRadius}
+                          stroke="currentColor"
+                          strokeWidth="6"
+                          strokeDasharray={circumference}
+                          strokeDashoffset={strokeDashoffset}
+                          strokeLinecap="round"
+                          className="text-emerald-500 transition-all duration-700"
+                          fill="transparent"
+                        />
+                      </svg>
+
+                      {/* Icon inside Ring: Growth Stage Icon Swap */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className={`text-3xl sm:text-4xl transition-transform duration-300 ${isTimerRunning ? 'animate-bounce duration-1000' : ''}`}>
+                          {currentGrowthStage.icon}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Timer Countdown Time */}
+                    <div className="text-xs sm:text-sm font-mono font-black text-slate-900 dark:text-white">
+                      {isTimerRunning ? formatSeconds(effectiveRemainingSecs) : '25:00 Ready'}
+                    </div>
+
+                    <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
+                      <span>{currentGrowthStage.name}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Empty Slot: "Awaiting Seed" state */}
+                {isEmptyWaiting && (
+                  <div className="space-y-2 opacity-75 group-hover:opacity-100 transition-opacity">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-3xl group-hover:scale-105 transition-transform bg-white/50 dark:bg-slate-800/40">
+                      <span>🌱</span>
+                    </div>
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                      {plot.label || 'Awaiting Seed'}
+                    </span>
+                  </div>
+                )}
+
+              </div>
+
+              {/* Slot Footer */}
+              <div className="border-t border-slate-200/70 dark:border-slate-700/70 pt-2.5 space-y-1 z-10">
+                {isHarvested && (
+                  <>
+                    <div className="flex items-center justify-between text-xs font-black text-slate-900 dark:text-white">
+                      <span className="truncate">{plot.floraName || config.name}</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-extrabold text-[11px]">
+                        +50 XP
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                      <span className="truncate">{plot.subjectName || 'CBSE Study'}</span>
+                      <span>25m Focus</span>
+                    </div>
+                  </>
+                )}
+
+                {isActivePlot && (
+                  <>
+                    <div className="flex items-center justify-between text-xs font-black text-slate-900 dark:text-white">
+                      <span className="truncate">{activeSubjectName}</span>
+                      <span className="text-amber-500 font-extrabold text-[11px]">
+                        {progressPercent}%
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-600 dark:text-slate-400 truncate font-medium">
+                      {isTimerRunning ? 'Sprint in progress...' : 'Start timer to cultivate'}
+                    </div>
+                  </>
+                )}
+
+                {isEmptyWaiting && (
+                  <div className="text-[11px] text-center text-slate-500 dark:text-slate-400 font-medium">
+                    {plot.label ? `${plot.label} • Ready for 25m sprint` : 'Awaiting Seed • Ready for 25m sprint'}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Terrarium Actions & Milestone Completion Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+        <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-medium">
+          <Info className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span>
+            {isAllHarvested 
+              ? 'All 4 plots bloomed! Archive to greenhouse to claim +100 XP and plant your next batch.'
+              : `${plots.filter(p => p.status === 'harvested').length}/4 Plots Harvested. Complete 25m sprints to fill the terrarium.`
+            }
+          </span>
         </div>
 
-        <span className="px-3 py-1 rounded-xl bg-amber-500 text-white font-extrabold text-xs self-start sm:self-auto shrink-0 shadow-2xs">
-          +{nextPlantToEarn.xp} XP
-        </span>
+        <div className="flex items-center gap-2 self-end sm:self-auto">
+          {/* Greenhouse History Drawer Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowHistoryDrawer(prev => !prev)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Greenhouse ({totalHarvestedCount})</span>
+            {showHistoryDrawer ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* New Terrarium Batch Reset Button */}
+          <button
+            type="button"
+            onClick={handleHarvestBatchAndReset}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer ${
+              isAllHarvested
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white animate-pulse'
+                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+            }`}
+            title="Archive completed plots to Greenhouse and prepare 4 fresh soil plots"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>{isAllHarvested ? 'Harvest All & Reset (+100 XP)' : 'New Cycle'}</span>
+          </button>
+        </div>
       </div>
+
+      {/* Historical Greenhouse Drawer (Expandable) */}
+      {showHistoryDrawer && (
+        <div className="border-t border-slate-200/80 dark:border-slate-800 pt-4 space-y-3 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+              <Trophy className="w-4 h-4 text-amber-500" />
+              <span>Flora Greenhouse Archive ({totalHarvestedCount} Total Harvested)</span>
+            </h4>
+            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+              +{totalHarvestedCount * 50} Lifetime Focus XP
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
+            {/* Show Current Terrarium Flora */}
+            {plots.filter(p => p.status === 'harvested').map((p, idx) => (
+              <div 
+                key={`cur-${idx}`}
+                onClick={() => setInspectingPlot(p)}
+                className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-center space-y-1 hover:border-emerald-500 cursor-pointer transition-all relative group"
+              >
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleDeleteSession(p.slotId);
+                  }}
+                  className="absolute top-1 right-1 p-1 text-slate-400 hover:text-rose-500 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                  title="Delete session (-50 XP)"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+                <div className="text-2xl">{p.icon}</div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{p.floraName}</div>
+                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold">{p.tier}</div>
+              </div>
+            ))}
+
+            {/* Show Archived History Flora */}
+            {floraHistory.map((h, idx) => (
+              <div 
+                key={`hist-${idx}`}
+                onClick={() => setInspectingPlot(h)}
+                className="bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-2.5 text-center space-y-1 hover:border-emerald-500 cursor-pointer transition-all"
+              >
+                <div className="text-2xl">{h.icon}</div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{h.floraName}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-extrabold">{h.tier}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Plant Inspection Modal */}
-      {selectedPlant && (
-        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-in fade-in zoom-in-95 duration-150 relative">
+      {inspectingPlot && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 animate-in fade-in zoom-in-95 duration-150 relative">
             <button
-              onClick={() => setSelectedPlant(null)}
-              className="absolute top-4 right-4 p-1 text-stone-400 hover:text-stone-700 rounded-full"
+              type="button"
+              onClick={() => setInspectingPlot(null)}
+              className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-full cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="text-center space-y-2 pt-2">
-              <div className="w-20 h-20 bg-emerald-50 border-2 border-emerald-200 rounded-3xl flex items-center justify-center text-5xl mx-auto shadow-inner">
-                {selectedPlant.icon}
+              <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/60 border-2 border-emerald-200 dark:border-emerald-800 rounded-3xl flex items-center justify-center text-5xl mx-auto shadow-inner">
+                {inspectingPlot.icon}
               </div>
-              <h3 className="text-lg font-black text-stone-900">{selectedPlant.name}</h3>
-              <span className="inline-block text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-0.5 rounded-full uppercase tracking-wider">
-                Stage: {selectedPlant.stage}
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                {inspectingPlot.floraName}
+              </h3>
+              <span className={`inline-block text-xs font-bold px-3 py-0.5 rounded-full uppercase tracking-wider border ${
+                inspectingPlot.tier ? TIER_CONFIGS[inspectingPlot.tier].badgeBg : ''
+              }`}>
+                Tier: {inspectingPlot.tier}
               </span>
             </div>
 
-            <div className="bg-stone-50 rounded-2xl p-4 border border-stone-200/80 space-y-2 text-xs">
-              <div className="flex justify-between text-stone-600">
-                <span>Earned From:</span>
-                <strong className="text-stone-900">{selectedPlant.subjectName || 'CBSE Study'}</strong>
+            <p className="text-xs text-slate-600 dark:text-slate-300 text-center leading-relaxed font-normal">
+              {inspectingPlot.tier ? TIER_CONFIGS[inspectingPlot.tier].desc : ''}
+            </p>
+
+            <div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 text-xs">
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                <span>Subject Studied:</span>
+                <strong className="text-slate-900 dark:text-white font-bold">{inspectingPlot.subjectName || 'CBSE Study'}</strong>
               </div>
-              <div className="flex justify-between text-stone-600">
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
                 <span>Focus Duration:</span>
-                <strong className="text-emerald-700">{selectedPlant.sessionMinutes || 25} Minutes</strong>
+                <strong className="text-emerald-600 dark:text-emerald-400 font-bold">{inspectingPlot.durationMinutes || 25} Minutes</strong>
               </div>
-              <div className="flex justify-between text-stone-600">
-                <span>Date Grown:</span>
-                <strong className="text-stone-900">
-                  {new Date(selectedPlant.earnedAt).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                <span>Harvest Date:</span>
+                <strong className="text-slate-900 dark:text-white font-bold">
+                  {inspectingPlot.harvestedAt 
+                    ? new Date(inspectingPlot.harvestedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+                    : 'Today'
+                  }
                 </strong>
               </div>
-              <div className="flex justify-between text-stone-600">
-                <span>Student XP Gained:</span>
-                <strong className="text-purple-700 font-extrabold">+40 XP</strong>
+              <div className="flex justify-between text-slate-600 dark:text-slate-400">
+                <span>Focus XP Awarded:</span>
+                <strong className="text-emerald-600 dark:text-emerald-400 font-black">+50 Focus XP</strong>
+              </div>
+              <div className="flex justify-between text-slate-600 dark:text-slate-400 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                <span>Lock Status:</span>
+                <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-extrabold text-[11px]">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Locked in Terrarium
+                </span>
               </div>
             </div>
 
-            <button
-              onClick={() => setSelectedPlant(null)}
-              className="w-full py-2.5 rounded-xl bg-stone-900 text-white font-extrabold text-xs hover:bg-stone-800 transition-colors cursor-pointer"
-            >
-              Close Inspection
-            </button>
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  if (inspectingPlot) {
+                    handleDeleteSession(inspectingPlot.slotId);
+                    setInspectingPlot(null);
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-extrabold text-xs transition-colors cursor-pointer border border-rose-200 dark:border-rose-800 flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete (-50 XP)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInspectingPlot(null)}
+                className="flex-1 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-extrabold text-xs hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
