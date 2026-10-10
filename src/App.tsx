@@ -22,7 +22,11 @@ import {
 import { 
   SUBJECTS, 
   INITIAL_CHAPTERS, 
-  DEFAULT_STUDENT_PROFILE 
+  DEFAULT_STUDENT_PROFILE,
+  getActiveHindiCourse,
+  HINDI_COURSE_STORAGE_KEY,
+  filterChaptersForHindiCourse,
+  getSubjectsForCourse
 } from './data/cbseSyllabusData';
 import { INITIAL_QUIZ_QUESTIONS } from './data/cbseQuizData';
 import { INITIAL_FORMULA_CARDS } from './data/cbseFormulasData';
@@ -130,20 +134,31 @@ export default function App() {
     localStorage.setItem('cbse_virtual_plants', JSON.stringify(virtualPlants));
   }, [virtualPlants]);
 
-  // 3. Chapters State (Clean 0% completion state when cleared, with missing chapters auto-merged)
+  // 3. Chapters State (Clean 0% completion state when cleared, with syllabus metadata auto-synced)
   const [chapters, setChapters] = useState<Chapter[]>(() => {
     const saved = getMigratedStorageItem(STORAGE_KEYS.SYLLABUS, ['strack_syllabus', 'cbse_chapters']);
     if (saved) {
       try {
         const parsed: Chapter[] = JSON.parse(saved);
-        const existingIds = new Set(parsed.map(c => c.id));
-        const missingChapters = getCleanClearedChapters(
-          INITIAL_CHAPTERS.filter(c => !existingIds.has(c.id))
-        );
-        if (missingChapters.length > 0) {
-          return [...parsed, ...missingChapters];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const userChapMap = new Map(parsed.map(c => [c.id, c]));
+          return INITIAL_CHAPTERS.map(initCh => {
+            const userCh = userChapMap.get(initCh.id);
+            if (!userCh) return initCh;
+            const userTopicMap = new Map(userCh.topics.map(t => [t.id, t.completed]));
+            return {
+              ...initCh,
+              completed: userCh.completed,
+              confidence: userCh.confidence ?? initCh.confidence,
+              notes: userCh.notes ?? '',
+              lastStudiedDate: userCh.lastStudiedDate,
+              topics: initCh.topics.map(t => ({
+                ...t,
+                completed: userTopicMap.get(t.id) ?? false
+              }))
+            };
+          });
         }
-        return parsed;
       } catch (e) {
         return getCleanClearedChapters(INITIAL_CHAPTERS);
       }
@@ -201,6 +216,29 @@ export default function App() {
     localStorage.setItem(STORAGE_KEYS.STUDY_SESSIONS, JSON.stringify(studySessions));
     localStorage.setItem('cbse_study_sessions', JSON.stringify(studySessions));
   }, [studySessions]);
+
+  // 7. Hindi Course Preference (Course A: Code 002 vs Course B: Code 085)
+  const [hindiCourse, setHindiCourse] = useState<'A' | 'B'>(() => {
+    return getActiveHindiCourse();
+  });
+
+  const handleSetHindiCourse = (course: 'A' | 'B') => {
+    setHindiCourse(course);
+    try {
+      localStorage.setItem(HINDI_COURSE_STORAGE_KEY, course);
+      localStorage.setItem('cbse_hindi_course', course);
+    } catch (e) {}
+  };
+
+  // Active chapters filtered strictly by selected Hindi course
+  const activeChapters = useMemo(() => {
+    return filterChaptersForHindiCourse(chapters, hindiCourse);
+  }, [chapters, hindiCourse]);
+
+  // Active subjects with dynamic Hindi name and code
+  const activeSubjects = useMemo(() => {
+    return getSubjectsForCourse(hindiCourse);
+  }, [hindiCourse]);
 
   // Listen for user auth state and seamlessly sync tracker data with Firestore under users/${user.uid}/trackerData
   useEffect(() => {
@@ -440,7 +478,7 @@ export default function App() {
           }}
           isSidebarCollapsed={isSidebarCollapsed}
           profile={profile}
-          chapters={chapters}
+          chapters={activeChapters}
           studySessions={studySessions}
           quizAttempts={quizAttempts}
           virtualPlants={virtualPlants}
@@ -457,8 +495,8 @@ export default function App() {
           
           {activeTab === 'dashboard' && (
             <Dashboard
-              subjects={SUBJECTS}
-              chapters={chapters}
+              subjects={activeSubjects}
+              chapters={activeChapters}
               weakAreas={weakAreas}
               toDos={toDos}
               setToDos={setToDos}
@@ -472,19 +510,21 @@ export default function App() {
 
           {activeTab === 'syllabus' && (
             <SyllabusTracker
-              subjects={SUBJECTS}
+              subjects={activeSubjects}
               chapters={chapters}
               setChapters={setChapters}
               setToDos={setToDos}
               selectedSubjectFilter={selectedSubjectFilter}
               searchQuery={searchQuery}
+              hindiCourse={hindiCourse}
+              setHindiCourse={handleSetHindiCourse}
             />
           )}
 
           <div className={activeTab === 'timer' ? 'block' : 'hidden'}>
             <StudyTimer
-              subjects={SUBJECTS}
-              chapters={chapters}
+              subjects={activeSubjects}
+              chapters={activeChapters}
               studySessions={studySessions}
               setStudySessions={setStudySessions}
               virtualPlants={virtualPlants}
@@ -494,8 +534,8 @@ export default function App() {
 
           {activeTab === 'quiz' && (
             <QuizAnalytics
-              subjects={SUBJECTS}
-              chapters={chapters}
+              subjects={activeSubjects}
+              chapters={activeChapters}
               quizQuestions={quizQuestions}
               setQuizQuestions={setQuizQuestions}
               quizAttempts={quizAttempts}
@@ -507,7 +547,7 @@ export default function App() {
 
           {activeTab === 'formulas' && (
             <FormulaSheet
-              subjects={SUBJECTS}
+              subjects={activeSubjects}
               formulaCards={INITIAL_FORMULA_CARDS}
               searchQuery={searchQuery}
             />
@@ -515,7 +555,7 @@ export default function App() {
 
           {activeTab === 'sample_papers' && (
             <SamplePaperTracker
-              subjects={SUBJECTS}
+              subjects={activeSubjects}
             />
           )}
 
@@ -534,7 +574,7 @@ export default function App() {
             "Your dedication today builds your victory tomorrow. Believe in yourself, stay consistent, and conquer your Class 10 Board Exams with total confidence! 🌟"
           </p>
           <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-stone-600 dark:text-stone-300">
-            <span className="font-semibold text-stone-700 dark:text-stone-300">Created with ❤️ By Pushpam Kumar</span>
+            <span className="font-semibold text-stone-700 dark:text-stone-300">Created with ❤️ by a student like you</span>
             <span className="text-stone-400 dark:text-stone-600">•</span>
             <button
               type="button"

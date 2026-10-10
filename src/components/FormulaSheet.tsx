@@ -40,6 +40,14 @@ export const FormulaSheet: React.FC<FormulaSheetProps> = ({
       
       {/* Header */}
       <div className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-xs space-y-2">
+        <div className="flex flex-wrap items-center gap-2 mb-1">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Session 2026-2027
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-stone-100 text-stone-700 border border-stone-200">
+            <Check className="w-3.5 h-3.5 text-emerald-600" /> Rationalized NCERT Aligned
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <span className="p-2 bg-amber-100 text-amber-800 rounded-xl">
             <Lightbulb className="w-5 h-5 text-amber-600" />

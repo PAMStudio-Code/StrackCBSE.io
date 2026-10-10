@@ -93,6 +93,9 @@ export const AboutPage: React.FC<AboutPageProps> = ({
             <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-slate-700 dark:text-slate-300">
               Session 2026-2027
             </span>
+            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300">
+              Rationalized NCERT Aligned
+            </span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
@@ -111,7 +114,7 @@ export const AboutPage: React.FC<AboutPageProps> = ({
             </div>
             <div className="p-3.5 rounded-xl bg-white/85 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200/80 dark:border-slate-800 shadow-sm">
               <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400">100%</div>
-              <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300">NCERT Aligned</div>
+              <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300">Rationalized NCERT Aligned</div>
             </div>
             <div className="p-3.5 rounded-xl bg-white/85 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200/80 dark:border-slate-800 shadow-sm">
               <div className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400">Offline</div>
@@ -206,11 +209,11 @@ export const AboutPage: React.FC<AboutPageProps> = ({
         <div className="pt-2 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200/60 dark:border-slate-800/80 text-xs text-slate-700 dark:text-slate-300">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-full bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 flex items-center justify-center font-bold text-xs border border-emerald-200 dark:border-emerald-800">
-              PK
+              🎓
             </div>
             <div>
-              <span className="font-extrabold text-slate-900 dark:text-white">Pushpam Kumar</span>
-              <span className="text-[11px] text-slate-700 dark:text-slate-400 block">Creator & Developer • PAM Studio</span>
+              <span className="font-extrabold text-slate-900 dark:text-white">Created by a student like you</span>
+              <span className="text-[11px] text-slate-700 dark:text-slate-400 block">Class 10 Peer Builder • Dedicated to CBSE Scholars</span>
             </div>
           </div>
 

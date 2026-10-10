@@ -17,9 +17,15 @@ import {
   Plus,
   PlusCircle,
   ListTodo,
-  Download
+  Download,
+  Languages
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { 
+  getActiveHindiCourse, 
+  HINDI_COURSE_STORAGE_KEY, 
+  isChapterActiveForHindiCourse 
+} from '../data/cbseSyllabusData';
 
 interface SyllabusTrackerProps {
   subjects: Subject[];
@@ -28,6 +34,8 @@ interface SyllabusTrackerProps {
   setToDos?: React.Dispatch<React.SetStateAction<ToDoItem[]>>;
   selectedSubjectFilter?: string;
   searchQuery?: string;
+  hindiCourse?: 'A' | 'B';
+  setHindiCourse?: (course: 'A' | 'B') => void;
 }
 
 export const SyllabusTracker: React.FC<SyllabusTrackerProps> = ({
@@ -36,9 +44,29 @@ export const SyllabusTracker: React.FC<SyllabusTrackerProps> = ({
   setChapters,
   setToDos,
   selectedSubjectFilter = 'all',
-  searchQuery = ''
+  searchQuery = '',
+  hindiCourse: propHindiCourse,
+  setHindiCourse: propSetHindiCourse
 }) => {
   const [activeSubjectId, setActiveSubjectId] = useState<string>(selectedSubjectFilter || 'all');
+  const [localHindiCourse, setLocalHindiCourse] = useState<'A' | 'B'>(() => {
+    return propHindiCourse || getActiveHindiCourse();
+  });
+
+  const activeHindiCourse = propHindiCourse || localHindiCourse;
+
+  const handleSelectHindiCourse = (course: 'A' | 'B') => {
+    setLocalHindiCourse(course);
+    try {
+      localStorage.setItem(HINDI_COURSE_STORAGE_KEY, course);
+    } catch (e) {}
+    if (propSetHindiCourse) {
+      propSetHindiCourse(course);
+    }
+    setAddedNotice(`Switched to Hindi Course ${course} (Code ${course === 'A' ? '002' : '085'})`);
+    setTimeout(() => setAddedNotice(null), 2500);
+  };
+
   const [expandedChapterIds, setExpandedChapterIds] = useState<Set<string>>(
     new Set(chapters.map(c => c.id))
   );
@@ -146,7 +174,11 @@ export const SyllabusTracker: React.FC<SyllabusTrackerProps> = ({
     let noticeText = '';
     let shouldConfetti = false;
 
-    const unitChaps = chapters.filter(c => c.subjectId === subjectId && c.unitName === unitName);
+    const unitChaps = chapters.filter(c => 
+      c.subjectId === subjectId && 
+      c.unitName === unitName && 
+      isChapterActiveForHindiCourse(c, activeHindiCourse)
+    );
     const isAllDone = unitChaps.every(c => c.completed && c.topics.every(t => t.completed));
     const targetState = !isAllDone;
 
@@ -159,7 +191,7 @@ export const SyllabusTracker: React.FC<SyllabusTrackerProps> = ({
 
     setChapters(prev =>
       prev.map(ch => {
-        if (ch.subjectId === subjectId && ch.unitName === unitName) {
+        if (ch.subjectId === subjectId && ch.unitName === unitName && isChapterActiveForHindiCourse(ch, activeHindiCourse)) {
           return {
             ...ch,
             completed: targetState,
@@ -203,8 +235,11 @@ export const SyllabusTracker: React.FC<SyllabusTrackerProps> = ({
     } catch (e) {}
   };
 
-  // Filtering
-  let displayedChapters = chapters;
+  // Filtering:
+  // 1. Strictly enforce selected Hindi course:
+  // Hide Course B completely when Course A is active, and hide Course A completely when Course B is active.
+  let displayedChapters = chapters.filter(c => isChapterActiveForHindiCourse(c, activeHindiCourse));
+
   if (activeSubjectId !== 'all') {
     displayedChapters = displayedChapters.filter(c => c.subjectId === activeSubjectId);
   }
@@ -228,16 +263,20 @@ export const SyllabusTracker: React.FC<SyllabusTrackerProps> = ({
   // Export syllabus progress to Stracked_CBSE_Progress.json
   const handleExportProgress = () => {
     try {
+      const activeEnrolledChapters = chapters.filter(c => isChapterActiveForHindiCourse(c, activeHindiCourse));
       const exportPayload = {
         app: 'Stracked',
         title: 'Stracked — CBSE Study & Syllabus Tracker',
+        session: 'Session 2026-2027',
+        alignment: 'Rationalized NCERT Aligned',
+        hindiCourseEnrolled: `Hindi Course ${activeHindiCourse} (Code ${activeHindiCourse === 'A' ? '002' : '085'})`,
         exportedAt: new Date().toISOString(),
         summary: {
           totalTopics,
           completedTopics,
           completionPercentage: percent
         },
-        chapters
+        chapters: activeEnrolledChapters
       };
       const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -276,6 +315,33 @@ export const SyllabusTracker: React.FC<SyllabusTrackerProps> = ({
         </div>
       )}
 
+      {/* Syllabus Header Banner: Session 2026-2027 & Rationalized NCERT Aligned */}
+      <div className="bg-white border border-stone-200/90 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Session 2026-2027
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-stone-100 text-stone-700 border border-stone-200">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Rationalized NCERT Aligned
+            </span>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+            CBSE Class 10 Syllabus & Weightage Tracker
+          </h2>
+          <p className="text-stone-600 text-xs sm:text-sm max-w-2xl">
+            Official curriculum with exact board unit marks distribution (80 Marks Theory Paper + 20 Marks Internal Assessment).
+          </p>
+        </div>
+
+        <div className="flex sm:flex-col items-start sm:items-end gap-2 shrink-0">
+          <div className="bg-stone-50 border border-stone-200/90 rounded-xl px-3.5 py-2 text-left sm:text-right">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">Board Exam Format</span>
+            <span className="text-xs font-black text-stone-800">80 Marks Board Theory</span>
+          </div>
+        </div>
+      </div>
+
       {/* Subject Filter Bar */}
       <div className="bg-white border border-stone-200/90 rounded-2xl p-4 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -309,22 +375,132 @@ export const SyllabusTracker: React.FC<SyllabusTrackerProps> = ({
             All Subjects
           </button>
 
-          {subjects.map(s => (
-            <button
-              key={s.id}
-              onClick={() => setActiveSubjectId(s.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 ${
-                activeSubjectId === s.id
-                  ? 'bg-emerald-600 text-white font-bold shadow-xs'
-                  : 'bg-stone-100 text-stone-600 hover:text-stone-900 border border-stone-200/80'
-              }`}
-            >
-              <span>{s.name}</span>
-              <span className="text-[10px] opacity-80">({s.code})</span>
-            </button>
-          ))}
+          {subjects.map(s => {
+            const isHindi = s.id === 'hindi';
+            const displayName = isHindi
+              ? `Hindi Course ${activeHindiCourse}`
+              : s.name;
+            const displayCode = isHindi
+              ? (activeHindiCourse === 'B' ? '085' : '002')
+              : s.code;
+
+            return (
+              <button
+                key={s.id}
+                onClick={() => setActiveSubjectId(s.id)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer ${
+                  activeSubjectId === s.id
+                    ? isHindi
+                      ? 'bg-rose-600 text-white font-bold shadow-xs'
+                      : 'bg-emerald-600 text-white font-bold shadow-xs'
+                    : 'bg-stone-100 text-stone-600 hover:text-stone-900 border border-stone-200/80'
+                }`}
+              >
+                {isHindi && <Languages className="w-3.5 h-3.5" />}
+                <span>{displayName}</span>
+                <span className="text-[10px] opacity-80">({displayCode})</span>
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {/* Hindi Course Selector Toggle Pill (Displayed inside Hindi Subject View) */}
+      {activeSubjectId === 'hindi' && (
+        <div className="bg-gradient-to-r from-rose-50/90 via-white to-pink-50/90 dark:from-rose-950/20 dark:via-stone-900 dark:to-pink-950/20 border-2 border-rose-200/90 dark:border-rose-900/40 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200">
+                  <Languages className="w-3.5 h-3.5" /> CBSE Class 10 Hindi Course Selection
+                </span>
+                <span className="text-xs text-stone-500 font-medium">Session 2026-2027</span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-stone-100">
+                Choose Hindi Course A or Course B
+              </h3>
+              <p className="text-xs text-stone-600 dark:text-stone-400 max-w-2xl">
+                Students take either <strong>Course A (Code 002)</strong> or <strong>Course B (Code 085)</strong>. Switch below to isolate your textbook chapters, grammar topics, and board weightage.
+              </p>
+            </div>
+
+            {/* Segmented Toggle Pill */}
+            <div className="bg-stone-100/90 dark:bg-stone-800/90 p-1.5 rounded-2xl border border-stone-300/80 dark:border-stone-700/80 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 shrink-0 shadow-inner">
+              <button
+                type="button"
+                onClick={() => handleSelectHindiCourse('A')}
+                className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  activeHindiCourse === 'A'
+                    ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-700/30'
+                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 hover:bg-stone-200/70 dark:hover:bg-stone-700/50'
+                }`}
+              >
+                <BookOpen className={`w-4 h-4 shrink-0 ${activeHindiCourse === 'A' ? 'text-white' : 'text-rose-600'}`} />
+                <div className="text-left">
+                  <div className="font-extrabold leading-tight">Hindi Course A (Code 002)</div>
+                  <div className={`text-[10px] font-medium leading-tight ${activeHindiCourse === 'A' ? 'text-rose-100' : 'text-stone-500'}`}>
+                    क्षितिज भाग-2 & कृतिका भाग-2
+                  </div>
+                </div>
+                {activeHindiCourse === 'A' && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] font-black bg-white/20 text-white uppercase tracking-wider">
+                    Active
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectHindiCourse('B')}
+                className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                  activeHindiCourse === 'B'
+                    ? 'bg-rose-600 text-white shadow-sm ring-1 ring-rose-700/30'
+                    : 'text-stone-700 dark:text-stone-300 hover:text-stone-900 hover:bg-stone-200/70 dark:hover:bg-stone-700/50'
+                }`}
+              >
+                <BookOpen className={`w-4 h-4 shrink-0 ${activeHindiCourse === 'B' ? 'text-white' : 'text-pink-600'}`} />
+                <div className="text-left">
+                  <div className="font-extrabold leading-tight">Hindi Course B (Code 085)</div>
+                  <div className={`text-[10px] font-medium leading-tight ${activeHindiCourse === 'B' ? 'text-rose-100' : 'text-stone-500'}`}>
+                    स्पर्श भाग-2 & संचयन भाग-2
+                  </div>
+                </div>
+                {activeHindiCourse === 'B' && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] font-black bg-white/20 text-white uppercase tracking-wider">
+                    Active
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Active Course Details Sub-banner */}
+          <div className="pt-3 border-t border-rose-200/70 dark:border-rose-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 text-stone-700 dark:text-stone-300 font-medium">
+              <Sparkles className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>
+                {activeHindiCourse === 'A' ? (
+                  <>
+                    <strong className="text-rose-800 dark:text-rose-300">Course A (002):</strong> खंड 'क' अपठित बोध (14 अंक) • खंड 'ख' व्याकरण (16 अंक) • खंड 'ग' क्षितिज भाग-2 एवं कृतिका भाग-2 (34 अंक) • खंड 'घ' रचनात्मक लेखन (16 अंक)
+                  </>
+                ) : (
+                  <>
+                    <strong className="text-rose-800 dark:text-rose-300">Course B (085):</strong> खंड 'क' अपठित गद्यांश (14 अंक) • खंड 'ख' व्यावहारिक व्याकरण (16 अंक) • खंड 'ग' स्पर्श भाग-2 एवं संचयन भाग-2 (34 अंक) • खंड 'घ' रचनात्मक लेखन (16 अंक)
+                  </>
+                )}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-stone-800 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shadow-2xs">
+                Total Board Theory: 80 Marks
+              </span>
+              <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-400 border border-stone-200 shadow-2xs">
+                Saved in LocalStorage
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Units & Chapters Accordion List */}
       <div className="space-y-6">

@@ -1,6 +1,6 @@
 {
   "name": "StrackCBSE(Class10).io",
-  "description": "Comprehensive study scheduler, syllabus progress tracker, Pomodoro timer, CBSE pattern quizzes, and weak area analyzer for Class 10 students.",
+  "description": "Comprehensive CBSE Class 10 Session 2026-2027 study scheduler, rationalized NCERT aligned syllabus progress tracker, Pomodoro timer, quizzes, and weak area analyzer.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

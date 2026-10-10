@@ -161,8 +161,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> CBSE Class 10 Board Exam Status
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Session 2026-2027
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200/90 text-stone-700 text-[11px] font-bold">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Rationalized NCERT Aligned
+              </span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight">
               Syllabus Progress: <span className="text-emerald-700">{overallPercentage}% Completed</span>
@@ -247,7 +252,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex items-center justify-between mb-3.5">
           <div>
             <h3 className="text-base sm:text-lg font-extrabold text-stone-900 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-emerald-600" /> Subject-wise CBSE Syllabus Progress
+              <BarChart3 className="w-5 h-5 text-emerald-600" /> Subject-wise CBSE Syllabus Progress (Session 2026-2027)
             </h3>
             <p className="text-xs text-stone-500">Click any subject card to inspect chapter-wise topics and NCERT weightage</p>
           </div>

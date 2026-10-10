@@ -149,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 Stracked
               </span>
               <span className="text-[10px] text-emerald-800 dark:text-emerald-400 font-bold tracking-wider uppercase">
-                CBSE Class 10
+                CBSE Class 10 • 2026-27
               </span>
             </div>
           )}
@@ -309,7 +309,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
-                {profile.name || 'Pushpam Kumar'}
+                {profile.name || 'Class 10 Scholar'}
               </div>
               <div className="text-[10px] text-stone-500 dark:text-stone-400 truncate">
                 {profile.schoolName || 'CBSE Class 10 Scholar'}

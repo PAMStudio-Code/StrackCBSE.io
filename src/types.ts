@@ -1,4 +1,4 @@
-export type SubjectId = 'science' | 'maths' | 'sst' | 'english' | 'hindi' | 'cs';
+export type SubjectId = 'science' | 'maths' | 'sst' | 'english' | 'hindi' | 'hindi_b' | 'cs';
 
 export type ConfidenceLevel = 'low' | 'medium' | 'high';
 
@@ -23,6 +23,7 @@ export interface Chapter {
   notes?: string;
   keyFormulae?: string[];
   lastStudiedDate?: string;
+  hindiCourse?: 'A' | 'B';
 }
 
 export interface Subject {

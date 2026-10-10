@@ -1,4 +1,8 @@
 import { Subject, Chapter, StudentProfile } from '../types';
+import { ENGLISH_CHAPTERS, HINDI_A_CHAPTERS, HINDI_B_CHAPTERS } from './cbseEnglishHindiData';
+
+export const CBSE_SESSION_LABEL = "Session 2026-2027";
+export const CBSE_CURRICULUM_TAG = "Rationalized NCERT Aligned";
 
 export const DEFAULT_STUDENT_PROFILE: StudentProfile = {
   name: "Class 10 Scholar",
@@ -51,12 +55,12 @@ export const SUBJECTS: Subject[] = [
     borderColor: 'border-purple-200',
     iconName: 'BookOpen',
     totalMarks: 80,
-    unitsCount: 4,
+    unitsCount: 3,
   },
   {
     id: 'hindi',
-    name: 'Hindi Course A',
-    code: '002',
+    name: 'Hindi (Course A / B)',
+    code: '002 / 085',
     color: 'rose',
     badgeBg: 'bg-rose-50 text-rose-800 border border-rose-200/80',
     borderColor: 'border-rose-200',
@@ -77,13 +81,56 @@ export const SUBJECTS: Subject[] = [
   },
 ];
 
+export const HINDI_COURSE_STORAGE_KEY = 'cbse_hindi_course_preference';
+
+export function getActiveHindiCourse(): 'A' | 'B' {
+  if (typeof window === 'undefined') return 'A';
+  try {
+    const val = localStorage.getItem(HINDI_COURSE_STORAGE_KEY);
+    return val === 'B' ? 'B' : 'A';
+  } catch (e) {
+    return 'A';
+  }
+}
+
+export function isChapterActiveForHindiCourse(chapter: Chapter, hindiCourse: 'A' | 'B'): boolean {
+  if (chapter.subjectId !== 'hindi') return true;
+  if (chapter.hindiCourse) {
+    return chapter.hindiCourse === hindiCourse;
+  }
+  if (chapter.id.startsWith('hin-b')) {
+    return hindiCourse === 'B';
+  }
+  if (chapter.id.startsWith('hin-a')) {
+    return hindiCourse === 'A';
+  }
+  return true;
+}
+
+export function filterChaptersForHindiCourse(chapters: Chapter[], hindiCourse: 'A' | 'B'): Chapter[] {
+  return chapters.filter(c => isChapterActiveForHindiCourse(c, hindiCourse));
+}
+
+export function getSubjectsForCourse(hindiCourse: 'A' | 'B'): Subject[] {
+  return SUBJECTS.map(s => {
+    if (s.id === 'hindi') {
+      return {
+        ...s,
+        name: hindiCourse === 'B' ? 'Hindi Course B' : 'Hindi Course A',
+        code: hindiCourse === 'B' ? '085' : '002',
+      };
+    }
+    return s;
+  });
+}
+
 export const INITIAL_CHAPTERS: Chapter[] = [
   // ================= SCIENCE (80 Marks) =================
   // Unit I: Chemical Substances - Nature and Behaviour (25 Marks)
   {
     id: 'sci-ch1',
     subjectId: 'science',
-    unitName: 'Unit I: Chemical Substances (25 Marks)',
+    unitName: 'Unit I: Chemical Substances - Nature and Behaviour (25 Marks)',
     chapterNum: 1,
     title: 'Chemical Reactions and Equations',
     weightageMarks: 6,
@@ -107,7 +154,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sci-ch2',
     subjectId: 'science',
-    unitName: 'Unit I: Chemical Substances (25 Marks)',
+    unitName: 'Unit I: Chemical Substances - Nature and Behaviour (25 Marks)',
     chapterNum: 2,
     title: 'Acids, Bases and Salts',
     weightageMarks: 6,
@@ -131,7 +178,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sci-ch3',
     subjectId: 'science',
-    unitName: 'Unit I: Chemical Substances (25 Marks)',
+    unitName: 'Unit I: Chemical Substances - Nature and Behaviour (25 Marks)',
     chapterNum: 3,
     title: 'Metals and Non-Metals',
     weightageMarks: 7,
@@ -152,7 +199,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sci-ch4',
     subjectId: 'science',
-    unitName: 'Unit I: Chemical Substances (25 Marks)',
+    unitName: 'Unit I: Chemical Substances - Nature and Behaviour (25 Marks)',
     chapterNum: 4,
     title: 'Carbon and Its Compounds',
     weightageMarks: 6,
@@ -233,7 +280,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
     subjectId: 'science',
     unitName: 'Unit II: World of Living (25 Marks)',
     chapterNum: 8,
-    title: 'Heredity and Evolution',
+    title: 'Heredity',
     weightageMarks: 4,
     completed: false,
     confidence: 'medium',
@@ -550,7 +597,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
     subjectId: 'maths',
     unitName: 'Unit V: Trigonometry (12 Marks)',
     chapterNum: 10,
-    title: 'Some Applications of Trigonometry',
+    title: 'Some Applications of Trigonometry (Heights and Distances)',
     weightageMarks: 5,
     completed: false,
     confidence: 'medium',
@@ -651,7 +698,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch1',
     subjectId: 'sst',
-    unitName: 'History (20 Marks)',
+    unitName: 'History: India and the Contemporary World - II (20 Marks)',
     chapterNum: 1,
     title: 'The Rise of Nationalism in Europe',
     weightageMarks: 5,
@@ -666,7 +713,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch2',
     subjectId: 'sst',
-    unitName: 'History (20 Marks)',
+    unitName: 'History: India and the Contemporary World - II (20 Marks)',
     chapterNum: 2,
     title: 'Nationalism in India',
     weightageMarks: 6,
@@ -682,9 +729,9 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch3',
     subjectId: 'sst',
-    unitName: 'History (20 Marks)',
+    unitName: 'History: India and the Contemporary World - II (20 Marks)',
     chapterNum: 3,
-    title: 'The Making of a Global World',
+    title: 'The Making of a Global World (sub-topics 1 to 1.3)',
     weightageMarks: 3,
     completed: false,
     confidence: 'medium',
@@ -696,7 +743,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch4',
     subjectId: 'sst',
-    unitName: 'History (20 Marks)',
+    unitName: 'History: India and the Contemporary World - II (20 Marks)',
     chapterNum: 4,
     title: 'Print Culture and the Modern World',
     weightageMarks: 4,
@@ -711,9 +758,9 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch5',
     subjectId: 'sst',
-    unitName: 'History (20 Marks)',
+    unitName: 'History: India and the Contemporary World - II (20 Marks)',
     chapterNum: 5,
-    title: 'The Age of Industrialisation',
+    title: 'The Age of Industrialisation (project work/inter-disciplinary)',
     weightageMarks: 2,
     completed: false,
     confidence: 'medium',
@@ -728,7 +775,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch6',
     subjectId: 'sst',
-    unitName: 'Geography (20 Marks)',
+    unitName: 'Geography: Contemporary India - II (20 Marks)',
     chapterNum: 6,
     title: 'Resources and Development',
     weightageMarks: 3,
@@ -742,7 +789,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch7',
     subjectId: 'sst',
-    unitName: 'Geography (20 Marks)',
+    unitName: 'Geography: Contemporary India - II (20 Marks)',
     chapterNum: 7,
     title: 'Forest and Wildlife Resources',
     weightageMarks: 2,
@@ -756,7 +803,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch8',
     subjectId: 'sst',
-    unitName: 'Geography (20 Marks)',
+    unitName: 'Geography: Contemporary India - II (20 Marks)',
     chapterNum: 8,
     title: 'Water Resources',
     weightageMarks: 3,
@@ -771,7 +818,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch9',
     subjectId: 'sst',
-    unitName: 'Geography (20 Marks)',
+    unitName: 'Geography: Contemporary India - II (20 Marks)',
     chapterNum: 9,
     title: 'Agriculture',
     weightageMarks: 4,
@@ -786,7 +833,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch10',
     subjectId: 'sst',
-    unitName: 'Geography (20 Marks)',
+    unitName: 'Geography: Contemporary India - II (20 Marks)',
     chapterNum: 10,
     title: 'Minerals and Energy Resources',
     weightageMarks: 3,
@@ -800,7 +847,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch11',
     subjectId: 'sst',
-    unitName: 'Geography (20 Marks)',
+    unitName: 'Geography: Contemporary India - II (20 Marks)',
     chapterNum: 11,
     title: 'Manufacturing Industries',
     weightageMarks: 3,
@@ -814,9 +861,9 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch12',
     subjectId: 'sst',
-    unitName: 'Geography (20 Marks)',
+    unitName: 'Geography: Contemporary India - II (20 Marks)',
     chapterNum: 12,
-    title: 'Lifelines of National Economy',
+    title: 'Lifelines of National Economy (only maps/inter-disciplinary)',
     weightageMarks: 2,
     completed: false,
     confidence: 'medium',
@@ -830,7 +877,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch13',
     subjectId: 'sst',
-    unitName: 'Political Science (20 Marks)',
+    unitName: 'Political Science: Democratic Politics - II (20 Marks)',
     chapterNum: 13,
     title: 'Power Sharing',
     weightageMarks: 4,
@@ -845,7 +892,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch14',
     subjectId: 'sst',
-    unitName: 'Political Science (20 Marks)',
+    unitName: 'Political Science: Democratic Politics - II (20 Marks)',
     chapterNum: 14,
     title: 'Federalism',
     weightageMarks: 4,
@@ -859,7 +906,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch15',
     subjectId: 'sst',
-    unitName: 'Political Science (20 Marks)',
+    unitName: 'Political Science: Democratic Politics - II (20 Marks)',
     chapterNum: 15,
     title: 'Gender, Religion and Caste',
     weightageMarks: 4,
@@ -874,7 +921,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch16',
     subjectId: 'sst',
-    unitName: 'Political Science (20 Marks)',
+    unitName: 'Political Science: Democratic Politics - II (20 Marks)',
     chapterNum: 16,
     title: 'Political Parties',
     weightageMarks: 4,
@@ -888,7 +935,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch17',
     subjectId: 'sst',
-    unitName: 'Political Science (20 Marks)',
+    unitName: 'Political Science: Democratic Politics - II (20 Marks)',
     chapterNum: 17,
     title: 'Outcomes of Democracy',
     weightageMarks: 4,
@@ -904,10 +951,10 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch18',
     subjectId: 'sst',
-    unitName: 'Economics (20 Marks)',
+    unitName: 'Economics: Understanding Economic Development (20 Marks)',
     chapterNum: 18,
     title: 'Development',
-    weightageMarks: 4,
+    weightageMarks: 5,
     completed: true,
     confidence: 'high',
     topics: [
@@ -918,10 +965,10 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch19',
     subjectId: 'sst',
-    unitName: 'Economics (20 Marks)',
+    unitName: 'Economics: Understanding Economic Development (20 Marks)',
     chapterNum: 19,
     title: 'Sectors of the Indian Economy',
-    weightageMarks: 4,
+    weightageMarks: 5,
     completed: true,
     confidence: 'high',
     topics: [
@@ -932,10 +979,10 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch20',
     subjectId: 'sst',
-    unitName: 'Economics (20 Marks)',
+    unitName: 'Economics: Understanding Economic Development (20 Marks)',
     chapterNum: 20,
     title: 'Money and Credit',
-    weightageMarks: 4,
+    weightageMarks: 5,
     completed: false,
     confidence: 'medium',
     topics: [
@@ -946,7 +993,7 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch21',
     subjectId: 'sst',
-    unitName: 'Economics (20 Marks)',
+    unitName: 'Economics: Understanding Economic Development (20 Marks)',
     chapterNum: 21,
     title: 'Globalisation and the Indian Economy',
     weightageMarks: 5,
@@ -961,10 +1008,10 @@ export const INITIAL_CHAPTERS: Chapter[] = [
   {
     id: 'sst-ch22',
     subjectId: 'sst',
-    unitName: 'Economics (20 Marks)',
+    unitName: 'Economics: Understanding Economic Development (20 Marks)',
     chapterNum: 22,
-    title: 'Consumer Rights',
-    weightageMarks: 3,
+    title: 'Consumer Rights (Project Work Only)',
+    weightageMarks: 0,
     completed: false,
     confidence: 'medium',
     topics: [
@@ -973,712 +1020,14 @@ export const INITIAL_CHAPTERS: Chapter[] = [
     ]
   },
 
-  // ================= ENGLISH COURSE A (Code 184 - 80 Marks) =================
-  // Unit 1: First Flight - Prose
-  {
-    id: 'eng-ch1',
-    subjectId: 'english',
-    unitName: 'First Flight - Prose',
-    chapterNum: 1,
-    title: 'A Letter to God (G.L. Fuentes)',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'e-1-1', chapterId: 'eng-ch1', title: 'Lencho’s faith, hailstorm devastation & postmaster kindness', completed: false, ncertRef: 'NCERT First Flight Pg 3-8' },
-    ]
-  },
-  {
-    id: 'eng-ch2',
-    subjectId: 'english',
-    unitName: 'First Flight - Prose',
-    chapterNum: 2,
-    title: 'Nelson Mandela: Long Walk to Freedom',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'e-2-1', chapterId: 'eng-ch2', title: 'Inauguration speech, anti-apartheid struggle & twin obligations', completed: false, ncertRef: 'NCERT First Flight Pg 16-24' },
-    ]
-  },
-  {
-    id: 'eng-ch3',
-    subjectId: 'english',
-    unitName: 'First Flight - Prose',
-    chapterNum: 3,
-    title: 'Two Stories about Flying (His First Flight & Black Aeroplane)',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'e-3-1', chapterId: 'eng-ch3', title: 'Part I: His First Flight (Young seagull overcoming fear)', completed: false, ncertRef: 'NCERT First Flight Pg 32-36' },
-      { id: 'e-3-2', chapterId: 'eng-ch3', title: 'Part II: The Black Aeroplane (Mystery pilot in storm)', completed: false, ncertRef: 'NCERT First Flight Pg 37-41' },
-    ]
-  },
-  {
-    id: 'eng-ch4',
-    subjectId: 'english',
-    unitName: 'First Flight - Prose',
-    chapterNum: 4,
-    title: 'From the Diary of Anne Frank',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'e-4-1', chapterId: 'eng-ch4', title: 'Anne’s relationship with Kitty & Mr. Keesing’s essays', completed: false, ncertRef: 'NCERT First Flight Pg 48-55' },
-    ]
-  },
-  {
-    id: 'eng-ch5',
-    subjectId: 'english',
-    unitName: 'First Flight - Prose',
-    chapterNum: 5,
-    title: 'Glimpses of India (Baker from Goa, Coorg, Tea from Assam)',
-    weightageMarks: 5,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'e-5-1', chapterId: 'eng-ch5', title: 'Part I: A Baker from Goa (Pader heritage)', completed: false, ncertRef: 'NCERT First Flight Pg 85-88' },
-      { id: 'e-5-2', chapterId: 'eng-ch5', title: 'Part II: Coorg (Martial tradition, flora & fauna)', completed: false, ncertRef: 'NCERT First Flight Pg 89-92' },
-      { id: 'e-5-3', chapterId: 'eng-ch5', title: 'Part III: Tea from Assam (Pranjol & Rajvir tea legends)', completed: false, ncertRef: 'NCERT First Flight Pg 93-97' },
-    ]
-  },
-  {
-    id: 'eng-ch6',
-    subjectId: 'english',
-    unitName: 'First Flight - Prose',
-    chapterNum: 6,
-    title: 'Mijbil the Otter (Gavin Maxwell)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'e-6-1', chapterId: 'eng-ch6', title: 'Otter transport journey from Tigris to London', completed: false, ncertRef: 'NCERT First Flight Pg 103-111' },
-    ]
-  },
-  {
-    id: 'eng-ch7',
-    subjectId: 'english',
-    unitName: 'First Flight - Prose',
-    chapterNum: 7,
-    title: 'Madam Rides the Bus (Vallikkannan)',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'e-7-1', chapterId: 'eng-ch7', title: 'Valli’s eight-year-old bus ride, desire & encounter with death', completed: false, ncertRef: 'NCERT First Flight Pg 117-127' },
-    ]
-  },
-  {
-    id: 'eng-ch8',
-    subjectId: 'english',
-    unitName: 'First Flight - Prose',
-    chapterNum: 8,
-    title: 'The Sermon at Benares (Betty Renshaw)',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'e-8-1', chapterId: 'eng-ch8', title: 'Gautama Buddha enlightenment & Kisa Gotami mustard seed lesson', completed: false, ncertRef: 'NCERT First Flight Pg 133-138' },
-    ]
-  },
-  {
-    id: 'eng-ch9',
-    subjectId: 'english',
-    unitName: 'First Flight - Prose',
-    chapterNum: 9,
-    title: 'The Proposal (Play by Anton Chekhov)',
-    weightageMarks: 5,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'e-9-1', chapterId: 'eng-ch9', title: 'Lomov, Natalya & Chubukov quarrel over Oxen Meadows and dogs', completed: false, ncertRef: 'NCERT First Flight Pg 142-155' },
-    ]
-  },
-
-  // Unit 2: First Flight - Poetry
-  {
-    id: 'eng-po1',
-    subjectId: 'english',
-    unitName: 'First Flight - Poetry',
-    chapterNum: 10,
-    title: 'Dust of Snow & Fire and Ice (Robert Frost)',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'ep-1-1', chapterId: 'eng-po1', title: 'Dust of Snow: Hemlock tree, crow & mood transformation', completed: false, ncertRef: 'NCERT First Flight Pg 14' },
-      { id: 'ep-1-2', chapterId: 'eng-po1', title: 'Fire and Ice: Desire vs Hate metaphors for world destruction', completed: false, ncertRef: 'NCERT First Flight Pg 15' },
-    ]
-  },
-  {
-    id: 'eng-po2',
-    subjectId: 'english',
-    unitName: 'First Flight - Poetry',
-    chapterNum: 11,
-    title: 'A Tiger in the Zoo (Leslie Norris)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'ep-2-1', chapterId: 'eng-po2', title: 'Contrast between tiger in concrete cell vs wild jungle habitat', completed: false, ncertRef: 'NCERT First Flight Pg 29-31' },
-    ]
-  },
-  {
-    id: 'eng-po3',
-    subjectId: 'english',
-    unitName: 'First Flight - Poetry',
-    chapterNum: 12,
-    title: 'How to Tell Wild Animals (Carolyn Wells)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'ep-3-1', chapterId: 'eng-po3', title: 'Humorous descriptions of Asian Lion, Bengal Tiger, Leopard, Bear', completed: false, ncertRef: 'NCERT First Flight Pg 43-46' },
-    ]
-  },
-  {
-    id: 'eng-po4',
-    subjectId: 'english',
-    unitName: 'First Flight - Poetry',
-    chapterNum: 13,
-    title: 'The Ball Poem (John Berryman)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'ep-4-1', chapterId: 'eng-po4', title: 'Loss of ball as metaphor for learning responsibility & loss', completed: false, ncertRef: 'NCERT First Flight Pg 57-58' },
-    ]
-  },
-  {
-    id: 'eng-po5',
-    subjectId: 'english',
-    unitName: 'First Flight - Poetry',
-    chapterNum: 14,
-    title: 'Amanda! (Robin Klein)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'ep-5-1', chapterId: 'eng-po5', title: 'Child imagination (mermaid, orphan, Rapunzel) vs nagging parents', completed: false, ncertRef: 'NCERT First Flight Pg 61-63' },
-    ]
-  },
-  {
-    id: 'eng-po6',
-    subjectId: 'english',
-    unitName: 'First Flight - Poetry',
-    chapterNum: 15,
-    title: 'The Trees (Adrienne Rich)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'ep-6-1', chapterId: 'eng-po6', title: 'Movement of trees out of enclosed house into forest', completed: false, ncertRef: 'NCERT First Flight Pg 99-101' },
-    ]
-  },
-  {
-    id: 'eng-po7',
-    subjectId: 'english',
-    unitName: 'First Flight - Poetry',
-    chapterNum: 16,
-    title: 'Fog (Carl Sandburg)',
-    weightageMarks: 2,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'ep-7-1', chapterId: 'eng-po7', title: 'Metaphor of fog coming on little cat feet over harbor and city', completed: false, ncertRef: 'NCERT First Flight Pg 114' },
-    ]
-  },
-  {
-    id: 'eng-po8',
-    subjectId: 'english',
-    unitName: 'First Flight - Poetry',
-    chapterNum: 17,
-    title: 'The Tale of Custard the Dragon (Ogden Nash)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'ep-8-1', chapterId: 'eng-po8', title: 'Belinda’s pets, cowardly dragon Custard & pirate encounter', completed: false, ncertRef: 'NCERT First Flight Pg 129-132' },
-    ]
-  },
-  {
-    id: 'eng-po9',
-    subjectId: 'english',
-    unitName: 'First Flight - Poetry',
-    chapterNum: 18,
-    title: 'For Anne Gregory (W.B. Yeats)',
-    weightageMarks: 2,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'ep-9-1', chapterId: 'eng-po9', title: 'External yellow hair beauty vs internal spiritual love', completed: false, ncertRef: 'NCERT First Flight Pg 140' },
-    ]
-  },
-
-  // Unit 3: Footprints Without Feet (Supplementary)
-  {
-    id: 'eng-s1',
-    subjectId: 'english',
-    unitName: 'Footprints Without Feet (Supplementary Reader)',
-    chapterNum: 19,
-    title: 'A Triumph of Surgery (James Herriot)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'es-1-1', chapterId: 'eng-s1', title: 'Tricki dog, Mrs. Pumphrey overfeeding & Herriot non-medical recovery', completed: false, ncertRef: 'NCERT Footprints Pg 1-6' },
-    ]
-  },
-  {
-    id: 'eng-s2',
-    subjectId: 'english',
-    unitName: 'Footprints Without Feet (Supplementary Reader)',
-    chapterNum: 20,
-    title: 'The Thief’s Story (Ruskin Bond)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'es-2-1', chapterId: 'eng-s2', title: 'Hari Singh (15-yr thief), Anil trust & moral transformation', completed: false, ncertRef: 'NCERT Footprints Pg 8-13' },
-    ]
-  },
-  {
-    id: 'eng-s3',
-    subjectId: 'english',
-    unitName: 'Footprints Without Feet (Supplementary Reader)',
-    chapterNum: 21,
-    title: 'The Midnight Visitor (Robert Arthur)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'es-3-1', chapterId: 'eng-s3', title: 'Secret agent Ausable, Fowler & tricking gunman Max with balcony story', completed: false, ncertRef: 'NCERT Footprints Pg 14-18' },
-    ]
-  },
-  {
-    id: 'eng-s4',
-    subjectId: 'english',
-    unitName: 'Footprints Without Feet (Supplementary Reader)',
-    chapterNum: 22,
-    title: 'A Question of Trust (Victor Canning)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'es-4-1', chapterId: 'eng-s4', title: 'Horace Danby safe-robbing, lady in red deception at Shotover Grange', completed: false, ncertRef: 'NCERT Footprints Pg 20-25' },
-    ]
-  },
-  {
-    id: 'eng-s5',
-    subjectId: 'english',
-    unitName: 'Footprints Without Feet (Supplementary Reader)',
-    chapterNum: 23,
-    title: 'Footprints without Feet (H.G. Wells)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'es-5-1', chapterId: 'eng-s5', title: 'Griffin scientist, invisibility drug misuse & Iping village chaos', completed: false, ncertRef: 'NCERT Footprints Pg 26-31' },
-    ]
-  },
-  {
-    id: 'eng-s6',
-    subjectId: 'english',
-    unitName: 'Footprints Without Feet (Supplementary Reader)',
-    chapterNum: 24,
-    title: 'The Making of a Scientist (Robert W. Peterson)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'es-6-1', chapterId: 'eng-s6', title: 'Richard Ebright, Monarch butterflies & scientific curiosity journey', completed: false, ncertRef: 'NCERT Footprints Pg 32-38' },
-    ]
-  },
-  {
-    id: 'eng-s7',
-    subjectId: 'english',
-    unitName: 'Footprints Without Feet (Supplementary Reader)',
-    chapterNum: 25,
-    title: 'The Necklace (Guy de Maupassant)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'es-7-1', chapterId: 'eng-s7', title: 'Matilda Loisel vanity, lost diamond necklace & 10 years hard labor', completed: false, ncertRef: 'NCERT Footprints Pg 39-46' },
-    ]
-  },
-  {
-    id: 'eng-s8',
-    subjectId: 'english',
-    unitName: 'Footprints Without Feet (Supplementary Reader)',
-    chapterNum: 26,
-    title: 'Bholi (K.A. Abbas)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'es-8-1', chapterId: 'eng-s8', title: 'Sulekha (Bholi), teacher encouragement & rejection of greedy Bishamber', completed: false, ncertRef: 'NCERT Footprints Pg 54-62' },
-    ]
-  },
-  {
-    id: 'eng-s9',
-    subjectId: 'english',
-    unitName: 'Footprints Without Feet (Supplementary Reader)',
-    chapterNum: 27,
-    title: 'The Book That Saved the Earth (Claire Boiko)',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'es-9-1', chapterId: 'eng-s9', title: 'Martian invasion team (Think-Tank, Noodle, Oop) & Mother Goose nursery rhymes', completed: false, ncertRef: 'NCERT Footprints Pg 63-74' },
-    ]
-  },
-
-  // Unit 4: Grammar & Writing Skills
-  {
-    id: 'eng-g1',
-    subjectId: 'english',
-    unitName: 'Section B: Grammar & Writing Skills (20 Marks)',
-    chapterNum: 28,
-    title: 'Integrated CBSE Grammar Rules & Exercises',
-    weightageMarks: 10,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'eg-1-1', chapterId: 'eng-g1', title: 'Tenses, Modals & Subject-Verb Concord Rules', completed: false, ncertRef: 'Grammar Section' },
-      { id: 'eg-1-2', chapterId: 'eng-g1', title: 'Reported Speech (Direct & Indirect Commands/Statements)', completed: false, ncertRef: 'Grammar Section' },
-      { id: 'eg-1-3', chapterId: 'eng-g1', title: 'Determiners & Error Correction / Omission', completed: false, ncertRef: 'Grammar Section' },
-    ]
-  },
-  {
-    id: 'eng-g2',
-    subjectId: 'english',
-    unitName: 'Section B: Grammar & Writing Skills (20 Marks)',
-    chapterNum: 29,
-    title: 'Formal Letter Writing & Analytical Paragraph',
-    weightageMarks: 10,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'eg-2-1', chapterId: 'eng-g2', title: 'Formal Letter (Editor, Complaint, Order, Inquiry)', completed: false, ncertRef: 'Writing Skills' },
-      { id: 'eg-2-2', chapterId: 'eng-g2', title: 'Analytical Paragraph (Bar Graphs, Charts, Data Outline analysis)', completed: false, ncertRef: 'Writing Skills' },
-    ]
-  },
+  // ================= ENGLISH LANGUAGE & LITERATURE (Code 184 - 80 Marks) =================
+  ...ENGLISH_CHAPTERS,
 
   // ================= HINDI COURSE A (Code 002 - 80 Marks) =================
-  // Unit 1: क्षितिज भाग-2: काव्य खंड
-  {
-    id: 'hin-k1',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: काव्य खंड',
-    chapterNum: 1,
-    title: 'सूरदास के पद (उद्धव तुम हो अति बड़भागी)',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hk-1-1', chapterId: 'hin-k1', title: 'गोपियों का उद्धव पर व्यंग्य, प्रेम भक्ति एवं पद व्याख्या', completed: false, ncertRef: 'NCERT क्षितिज पृ 1-6' },
-    ]
-  },
-  {
-    id: 'hin-k2',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: काव्य खंड',
-    chapterNum: 2,
-    title: 'तुलसीदास: राम-लक्ष्मण-परशुराम संवाद',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hk-2-1', chapterId: 'hin-k2', title: 'शिवधनुष भंग के बाद लक्ष्मण और परशुराम का वीरोचित संवाद', completed: false, ncertRef: 'NCERT क्षितिज पृ 9-16' },
-    ]
-  },
-  {
-    id: 'hin-k3',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: काव्य खंड',
-    chapterNum: 3,
-    title: 'जयशंकर प्रसाद: आत्मकथ्य',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hk-3-1', chapterId: 'hin-k3', title: 'कवि द्वारा अपनी आत्मकथा न लिखने के कारण एवं छायावादी सौंदर्य', completed: false, ncertRef: 'NCERT क्षितिज पृ 22-24' },
-    ]
-  },
-  {
-    id: 'hin-k4',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: काव्य खंड',
-    chapterNum: 4,
-    title: 'सूर्यकांत त्रिपाठी "निराला": उत्साह एवं अट नहीं रही है',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hk-4-1', chapterId: 'hin-k4', title: 'उत्साह (बादल का आह्वान) और अट नहीं रही है (फागुन की मादकता)', completed: false, ncertRef: 'NCERT क्षितिज पृ 28-31' },
-    ]
-  },
-  {
-    id: 'hin-k5',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: काव्य खंड',
-    chapterNum: 5,
-    title: 'नागार्जुन: यह दंतुरित मुसकान एवं फसल',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hk-5-1', chapterId: 'hin-k5', title: 'शिशु की दंतुरित मुसकान की सुंदरता एवं फसल के निर्माण में प्रकृति व श्रम का योगदान', completed: false, ncertRef: 'NCERT क्षितिज पृ 34-37' },
-    ]
-  },
-  {
-    id: 'hin-k6',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: काव्य खंड',
-    chapterNum: 6,
-    title: 'गिरजाकुमार माथुर: छाया मत छूना',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hk-6-1', chapterId: 'hin-k6', title: 'विगत सुखों को याद कर वर्तमान दुख न बढ़ाने का संदेश', completed: false, ncertRef: 'NCERT क्षितिज पृ 40-42' },
-    ]
-  },
-  {
-    id: 'hin-k7',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: काव्य खंड',
-    chapterNum: 7,
-    title: 'ऋतुराज: कन्यादान',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hk-7-1', chapterId: 'hin-k7', title: 'माँ द्वारा बेटी को पारंपरिक स्त्री-सुलभ बंधनों से परे सीख', completed: false, ncertRef: 'NCERT क्षितिज पृ 45-47' },
-    ]
-  },
-  {
-    id: 'hin-k8',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: काव्य खंड',
-    chapterNum: 8,
-    title: 'मंगलेश डबराल: संगतकार',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hk-8-1', chapterId: 'hin-k8', title: 'मुख्य गायक के साथ संगतकार के निस्वार्थ सहयोग एवं त्याग का महत्व', completed: false, ncertRef: 'NCERT क्षितिज पृ 50-52' },
-    ]
-  },
+  ...HINDI_A_CHAPTERS,
 
-  // Unit 2: क्षितिज भाग-2: गद्य खंड
-  {
-    id: 'hin-g1',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: गद्य खंड',
-    chapterNum: 9,
-    title: 'स्वयं प्रकाश: नेताजी का चश्मा',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hg-1-1', chapterId: 'hin-g1', title: 'हालदार साहब, कैप्टन चश्मेवाला और देशप्रेम का सच्चा संदेश', completed: false, ncertRef: 'NCERT क्षितिज पृ 55-61' },
-    ]
-  },
-  {
-    id: 'hin-g2',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: गद्य खंड',
-    chapterNum: 10,
-    title: 'रामवृक्ष बेनीपुरी: बालगोबिन भगत',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hg-2-1', chapterId: 'hin-g2', title: 'बालगोबिन भगत का गृहस्थ संत जीवन, कबीर के प्रति श्रद्धा एवं सामाजिक कुरीति विरोध', completed: false, ncertRef: 'NCERT क्षितिज पृ 64-71' },
-    ]
-  },
-  {
-    id: 'hin-g3',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: गद्य खंड',
-    chapterNum: 11,
-    title: 'यशपाल: लखनवी अंदाज़',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hg-3-1', chapterId: 'hin-g3', title: 'नवाब साहब की पतनशील सामंती बनावटी जीवनशैली पर तीखा व्यंग्य', completed: false, ncertRef: 'NCERT क्षितिज पृ 74-78' },
-    ]
-  },
-  {
-    id: 'hin-g4',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: गद्य खंड',
-    chapterNum: 12,
-    title: 'सर्वेश्वर दयाल सक्सेना: मानवीय करुणा की दिव्य चमक',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hg-4-1', chapterId: 'hin-g4', title: 'फ़ादर कामिल बुल्के का आत्मीय व्यक्तित्व एवं हिंदी प्रेम', completed: false, ncertRef: 'NCERT क्षितिज पृ 81-87' },
-    ]
-  },
-  {
-    id: 'hin-g5',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: गद्य खंड',
-    chapterNum: 13,
-    title: 'मन्नू भंडारी: एक कहानी यह भी',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hg-5-1', chapterId: 'hin-g5', title: 'लेखिका के व्यक्तित्व निर्माण में पिता एवं प्राध्यापिका शीला अग्रवाल का प्रभाव', completed: false, ncertRef: 'NCERT क्षितिज पृ 90-99' },
-    ]
-  },
-  {
-    id: 'hin-g6',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: गद्य खंड',
-    chapterNum: 14,
-    title: 'महावीर प्रसाद द्विवेदी: स्त्री शिक्षा के विरोधी कुतर्कों का खंडन',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hg-6-1', chapterId: 'hin-g6', title: 'स्त्री शिक्षा के विरोधियों के अनर्गल तर्कों का तार्किक खंडन', completed: false, ncertRef: 'NCERT क्षितिज पृ 102-108' },
-    ]
-  },
-  {
-    id: 'hin-g7',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: गद्य खंड',
-    chapterNum: 15,
-    title: 'यतींद्र मिश्र: नौबतखाने में इबादत',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hg-7-1', chapterId: 'hin-g7', title: 'शहनाई वादक उस्ताद बिस्मिल्ला ख़ाँ का सादगीपूर्ण जीवन एवं संगीत साधना', completed: false, ncertRef: 'NCERT क्षितिज पृ 111-120' },
-    ]
-  },
-  {
-    id: 'hin-g8',
-    subjectId: 'hindi',
-    unitName: 'क्षितिज भाग-2: गद्य खंड',
-    chapterNum: 16,
-    title: 'भदंत आनंद कौसल्यायन: संस्कृति',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hg-8-1', chapterId: 'hin-g8', title: 'सभ्यता और संस्कृति का अंतर तथा मानव कल्याणकारी दृष्टि', completed: false, ncertRef: 'NCERT क्षितिज पृ 123-128' },
-    ]
-  },
-
-  // Unit 3: कृतिका भाग-2 (पूरक पाठ्यपुस्तक)
-  {
-    id: 'hin-kr1',
-    subjectId: 'hindi',
-    unitName: 'कृतिका भाग-2 (पूरक पाठ्यपुस्तक)',
-    chapterNum: 17,
-    title: 'शिवपूजन सहाय: माता का अंचल',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hkr-1-1', chapterId: 'hin-kr1', title: 'भोलानाथ का ग्रामीण बचपन, पिता संग खेल एवं संकट में माँ का आंचल', completed: false, ncertRef: 'NCERT कृतिका पृ 1-9' },
-    ]
-  },
-  {
-    id: 'hin-kr2',
-    subjectId: 'hindi',
-    unitName: 'कृतिका भाग-2 (पूरक पाठ्यपुस्तक)',
-    chapterNum: 18,
-    title: 'कमलेश्वर: जॉर्ज पंचम की नाक',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hkr-2-1', chapterId: 'hin-kr2', title: 'सरकारी तंत्र की चाटुकारिता एवं औपनिवेशिक मानसिकता पर तीखा व्यंग्य', completed: false, ncertRef: 'NCERT कृतिका पृ 11-16' },
-    ]
-  },
-  {
-    id: 'hin-kr3',
-    subjectId: 'hindi',
-    unitName: 'कृतिका भाग-2 (पूरक पाठ्यपुस्तक)',
-    chapterNum: 19,
-    title: 'मधु कांकरिया: साना-साना हाथ जोड़ि...',
-    weightageMarks: 4,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hkr-3-1', chapterId: 'hin-kr3', title: 'सिक्किम (गंतोक व युमथांग) यात्रा संस्मरण, प्राकृतिक सौंदर्य एवं बॉर्डर सेना का त्याग', completed: false, ncertRef: 'NCERT कृतिका पृ 18-29' },
-    ]
-  },
-  {
-    id: 'hin-kr4',
-    subjectId: 'hindi',
-    unitName: 'कृतिका भाग-2 (पूरक पाठ्यपुस्तक)',
-    chapterNum: 20,
-    title: 'शिवप्रसाद मिश्र "रुद्र": एही ठैयाँ झुलनी हेरानी हो रामा!',
-    weightageMarks: 2,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hkr-4-1', chapterId: 'hin-kr4', title: 'दुलारी और टुन्नू का स्वाधीनता आंदोलन में योगदान एवं लोककला प्रेम', completed: false, ncertRef: 'NCERT कृतिका पृ 31-41' },
-    ]
-  },
-  {
-    id: 'hin-kr5',
-    subjectId: 'hindi',
-    unitName: 'कृतिका भाग-2 (पूरक पाठ्यपुस्तक)',
-    chapterNum: 21,
-    title: 'अज्ञेय: मैं क्यों लिखता हूँ?',
-    weightageMarks: 3,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hkr-5-1', chapterId: 'hin-kr5', title: 'लेखक की आंतरिक विवशता, हिरोशिमा परमाणु विस्फोट का प्रभाव', completed: false, ncertRef: 'NCERT कृतिका पृ 43-48' },
-    ]
-  },
-
-  // Unit 4: व्यवहारिक व्याकरण एवं रचनात्मक लेखन
-  {
-    id: 'hin-vw1',
-    subjectId: 'hindi',
-    unitName: 'व्यावहारिक व्याकरण एवं रचनात्मक लेखन (36 अंक)',
-    chapterNum: 22,
-    title: 'व्यावहारिक व्याकरण (रचना अनुसार वाक्य, वाच्य, पद परिचय, अलंकार/रस)',
-    weightageMarks: 16,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hvw-1-1', chapterId: 'hin-vw1', title: 'रचना के आधार पर वाक्य भेद (सरल, संयुक्त, मिश्र वाक्य रूपांतरण)', completed: false, ncertRef: 'व्याकरण नियम' },
-      { id: 'hvw-1-2', chapterId: 'hin-vw1', title: 'वाच्य परिवर्तन (कर्तृवाच्य, कर्मवाच्य, भाववाच्य)', completed: false, ncertRef: 'व्याकरण नियम' },
-      { id: 'hvw-1-3', chapterId: 'hin-vw1', title: 'पद परिचय (संज्ञा, सर्वनाम, विशेषण, क्रिया, अव्यय)', completed: false, ncertRef: 'व्याकरण नियम' },
-      { id: 'hvw-1-4', chapterId: 'hin-vw1', title: 'अलंकार (अनुप्रास, यमक, श्लेष, उपमा, रूपक, उत्प्रेक्षा, अतिशयोक्ति, मानवीकरण)', completed: false, ncertRef: 'व्याकरण नियम' },
-    ]
-  },
-  {
-    id: 'hin-vw2',
-    subjectId: 'hindi',
-    unitName: 'व्यावहारिक व्याकरण एवं रचनात्मक लेखन (36 अंक)',
-    chapterNum: 23,
-    title: 'रचनात्मक लेखन (अनुच्छेद, पत्र, ई-मेल/स्ववृत्त, संदेश/विज्ञापन लेखन)',
-    weightageMarks: 20,
-    completed: false,
-    confidence: 'medium',
-    topics: [
-      { id: 'hvw-2-1', chapterId: 'hin-vw2', title: 'संकेत-बिंदुओं पर आधारित औपचारिक अनुच्छेद लेखन (6 अंक)', completed: false, ncertRef: 'रचनात्मक लेखन' },
-      { id: 'hvw-2-2', chapterId: 'hin-vw2', title: 'औपचारिक एवं अनौपचारिक पत्र लेखन (5 अंक)', completed: false, ncertRef: 'रचनात्मक लेखन' },
-      { id: 'hvw-2-3', chapterId: 'hin-vw2', title: 'स्ववृत्त (Bio-Data) लेखन अथवा ई-मेल लेखन (5 अंक)', completed: false, ncertRef: 'रचनात्मक लेखन' },
-      { id: 'hvw-2-4', chapterId: 'hin-vw2', title: 'विज्ञापन लेखन अथवा शुभकामनाएं/संदेश लेखन (4 अंक)', completed: false, ncertRef: 'रचनात्मक लेखन' },
-    ]
-  },
+  // ================= HINDI COURSE B (Code 085 - 80 Marks) =================
+  ...HINDI_B_CHAPTERS,
 
   // ================= ARTIFICIAL INTELLIGENCE (Code 417 - 50 Marks) =================
   {
